@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/farm_card.dart';
 import '../../../shared/widgets/bottom_nav_bar.dart';
@@ -25,8 +24,7 @@ class _MyFarmsScreenState extends State<MyFarmsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final mockService = MockDataService();
-    final allFarms = mockService.farms;
+    final allFarms = MockDataService().farms;
 
     final filteredFarms = allFarms.where((farm) {
       return farm.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
@@ -35,74 +33,83 @@ class _MyFarmsScreenState extends State<MyFarmsScreen> {
     }).toList();
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: const Color(0xFFF4F7F4),
       appBar: AppBar(
-        title: Text(
-          'My Farms',
-          style: AppTypography.screenHeading.copyWith(fontSize: 20),
-        ),
+        backgroundColor: const Color(0xFFF4F7F4),
+        elevation: 0,
+        title: Text('My Farms', style: AppTypography.screenHeading.copyWith(fontSize: 20)),
+        automaticallyImplyLeading: false,
         actions: [
           IconButton(
-            icon: const Icon(Icons.notifications_none_rounded),
+            icon: Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: const Icon(Icons.tune_rounded, size: 18, color: Color(0xFF1E293B)),
+            ),
             onPressed: () {},
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 12),
         ],
       ),
       body: SafeArea(
         child: Column(
           children: [
-            // Search Bar & Filter Bar
+            // ── Search + Add ──
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
               child: Column(
                 children: [
-                  // Search Input
+                  // Search Bar
                   Container(
-                    height: 46,
+                    height: 48,
                     decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.border),
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                      boxShadow: const [BoxShadow(color: Color(0x06000000), blurRadius: 6, offset: Offset(0, 2))],
                     ),
                     child: TextField(
                       controller: _searchController,
                       onChanged: (val) => setState(() => _searchQuery = val),
-                      style: AppTypography.bodyMedium.copyWith(color: AppColors.textPrimary),
+                      style: const TextStyle(fontSize: 14, color: Color(0xFF1E293B)),
                       decoration: const InputDecoration(
-                        hintText: 'Search your farms...',
-                        prefixIcon: Icon(Icons.search_rounded, size: 20, color: AppColors.textTertiary),
+                        hintText: 'Search farms by name or crop...',
+                        hintStyle: TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
+                        prefixIcon: Icon(Icons.search_rounded, size: 20, color: Color(0xFF94A3B8)),
                         border: InputBorder.none,
                         enabledBorder: InputBorder.none,
                         focusedBorder: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(vertical: 10),
+                        contentPadding: EdgeInsets.symmetric(vertical: 12),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
-
                   const SizedBox(height: 10),
-                  // "+ Add New Farm" Button matching Screen 05
+
+                  // Add New Farm Button
                   GestureDetector(
                     onTap: () => context.go('/farm-location'),
                     child: Container(
                       width: double.infinity,
-                      height: 42,
+                      height: 44,
                       decoration: BoxDecoration(
                         color: const Color(0xFFDCFCE7),
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: const Color(0xFF86EFAC), width: 1.2),
                       ),
-                      child: Row(
+                      child: const Row(
                         mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
-                          Icon(Icons.add_rounded, color: Color(0xFF166534), size: 18),
+                        children: [
+                          Icon(Icons.add_rounded, color: Color(0xFF166534), size: 20),
                           SizedBox(width: 6),
                           Text(
                             '+ Add New Farm',
                             style: TextStyle(
                               color: Color(0xFF166534),
-                              fontSize: 13,
+                              fontSize: 14,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -114,36 +121,57 @@ class _MyFarmsScreenState extends State<MyFarmsScreen> {
               ),
             ),
 
-            // Farm Cards List
+            // ── Farm count ──
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+              child: Row(
+                children: [
+                  Text(
+                    '${filteredFarms.length} farm${filteredFarms.length == 1 ? '' : 's'}',
+                    style: const TextStyle(fontSize: 13, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
+                  ),
+                ],
+              ),
+            ),
+
+            // ── Farm List ──
             Expanded(
               child: filteredFarms.isEmpty
                   ? Center(
-                      child: Text(
-                        'No farms found',
-                        style: AppTypography.bodyMedium,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.agriculture_outlined, size: 48, color: Color(0xFFCBD5E1)),
+                          const SizedBox(height: 12),
+                          Text(
+                            _searchQuery.isEmpty ? 'No farms yet.\nTap "+ Add New Farm" to begin.' : 'No farms match "$_searchQuery"',
+                            style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
                       ),
                     )
                   : ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
                       itemCount: filteredFarms.length,
                       itemBuilder: (context, index) {
                         final farm = filteredFarms[index];
                         return FarmCard(
                           farm: farm,
-                          onTap: () => context.go('/farm-detail'),
+                          onTap: () => context.go('/site-suitability'),
                         );
                       },
                     ),
             ),
 
-            // Bottom Navigation Bar
             BottomNavBar(
               currentIndex: 1,
-              onTap: (index) {
-                if (index == 0) context.go('/home');
-                if (index == 2) context.go('/agri-pv-design');
-                if (index == 3) context.go('/reports');
-                if (index == 4) context.go('/profile');
+              onTap: (i) {
+                if (i == 0) context.go('/home');
+                if (i == 1) context.go('/farms');
+                if (i == 2) context.go('/farm-location');
+                if (i == 3) context.go('/reports');
+                if (i == 4) context.go('/profile');
               },
             ),
           ],

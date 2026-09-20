@@ -41,7 +41,7 @@ class _SplashScreenState extends State<SplashScreen> {
           // Background scenic agrivoltaic landscape photo
           Positioned.fill(
             child: Image.asset(
-              'assets/images/splash_bg.jpg',
+              'assets/images/splash_agri_pv.jpg',
               fit: BoxFit.cover,
               errorBuilder: (context, error, stackTrace) => CustomPaint(
                 painter: Agrivoltaic3dPainter(

@@ -9,6 +9,9 @@ import '../../../shared/widgets/clearance_badge.dart';
 import '../../../shared/widgets/bottom_nav_bar.dart';
 import '../../../services/calculation/agri_pv_calculation_service.dart';
 import '../../../models/agri_pv_design.dart';
+import '../../visualization/engine/scene_3d_controller.dart';
+import '../../visualization/engine/camera_controller.dart';
+import '../../visualization/presentation/widgets/realtime_agri_pv_3d_viewport.dart';
 
 class AgriPvSystemDesignScreen extends StatefulWidget {
   const AgriPvSystemDesignScreen({super.key});
@@ -23,6 +26,27 @@ class _AgriPvSystemDesignScreenState extends State<AgriPvSystemDesignScreen> {
   PanelOrientation _orientation = PanelOrientation.south;
   double _rowSpacingMeters = 6.0;
   double _panelCoveragePercent = 40.0;
+  final Scene3dController _scene3dController = Scene3dController();
+
+  @override
+  void initState() {
+    super.initState();
+    _scene3dController.cameraController.setPreset(CameraPreset.perspective);
+    _sync3dConfig();
+  }
+
+  void _sync3dConfig() {
+    final cfg = _scene3dController.designConfig;
+    cfg.panelTilt = _tiltDegrees;
+    cfg.panelHeight = _mountingType.defaultHeight;
+    cfg.rowSpacing = _rowSpacingMeters;
+  }
+
+  @override
+  void dispose() {
+    _scene3dController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -41,6 +65,24 @@ class _AgriPvSystemDesignScreenState extends State<AgriPvSystemDesignScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF0F172A)),
+          onPressed: () => context.go('/site-suitability'),
+        ),
+        title: const Text(
+          'System Design',
+          style: TextStyle(
+            color: Color(0xFF0F172A),
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+            fontFamily: 'Inter',
+          ),
+        ),
+        centerTitle: true,
+      ),
       body: SafeArea(
         child: Column(
           children: [
@@ -51,7 +93,6 @@ class _AgriPvSystemDesignScreenState extends State<AgriPvSystemDesignScreen> {
                 if (step == 1) context.go('/farm-location');
                 if (step == 2) context.go('/farm-details');
                 if (step == 3) context.go('/site-suitability');
-                if (step == 5) context.go('/proposal-report');
               },
             ),
 
@@ -84,7 +125,10 @@ class _AgriPvSystemDesignScreenState extends State<AgriPvSystemDesignScreen> {
                         final isSelected = _mountingType == type;
                         return Expanded(
                           child: GestureDetector(
-                            onTap: () => setState(() => _mountingType = type),
+                            onTap: () => setState(() {
+                              _mountingType = type;
+                              _sync3dConfig();
+                            }),
                             child: Container(
                               margin: const EdgeInsets.symmetric(horizontal: 3),
                               padding: const EdgeInsets.symmetric(vertical: 10),
@@ -145,7 +189,10 @@ class _AgriPvSystemDesignScreenState extends State<AgriPvSystemDesignScreen> {
                             value: _tiltDegrees,
                             min: 10,
                             max: 40,
-                            onChanged: (val) => setState(() => _tiltDegrees = val),
+                            onChanged: (val) => setState(() {
+                              _tiltDegrees = val;
+                              _sync3dConfig();
+                            }),
                           ),
                           const Divider(height: 22, color: AppColors.borderLight),
 
@@ -156,7 +203,10 @@ class _AgriPvSystemDesignScreenState extends State<AgriPvSystemDesignScreen> {
                             value: _rowSpacingMeters,
                             min: 4.0,
                             max: 12.0,
-                            onChanged: (val) => setState(() => _rowSpacingMeters = val),
+                            onChanged: (val) => setState(() {
+                              _rowSpacingMeters = val;
+                              _sync3dConfig();
+                            }),
                           ),
                           const Divider(height: 22, color: AppColors.borderLight),
 
@@ -192,7 +242,12 @@ class _AgriPvSystemDesignScreenState extends State<AgriPvSystemDesignScreen> {
                                   child: Text(o.label),
                                 )).toList(),
                                 onChanged: (val) {
-                                  if (val != null) setState(() => _orientation = val);
+                                  if (val != null) {
+                                    setState(() {
+                                      _orientation = val;
+                                      _sync3dConfig();
+                                    });
+                                  }
                                 },
                               ),
                             ],
@@ -208,6 +263,95 @@ class _AgriPvSystemDesignScreenState extends State<AgriPvSystemDesignScreen> {
                       details: design.clearanceStatus,
                     ),
                     const SizedBox(height: 16),
+
+                    // 3D Digital Model Visual Preview Banner
+                    GestureDetector(
+                      onTap: () => context.go('/ar-3d-view'),
+                      child: Container(
+                        height: 130,
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: AppColors.border, width: 1.2),
+                          boxShadow: const [
+                            BoxShadow(color: AppColors.shadow, blurRadius: 6, offset: Offset(0, 2)),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(13),
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              RealtimeAgriPv3dViewport(
+                                controller: _scene3dController,
+                                showSunGizmo: false,
+                                enableGestures: false,
+                              ),
+                              Container(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                    colors: [
+                                      Colors.transparent,
+                                      Colors.black.withValues(alpha: 0.65),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              Positioned(
+                                top: 10,
+                                right: 10,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primaryDark.withValues(alpha: 0.85),
+                                    borderRadius: BorderRadius.circular(100),
+                                  ),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.threed_rotation_rounded, color: Colors.white, size: 14),
+                                      SizedBox(width: 4),
+                                      Text(
+                                        'Interactive 3D Model',
+                                        style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              Positioned(
+                                bottom: 10,
+                                left: 12,
+                                right: 12,
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          '${_mountingType.label} Structure',
+                                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                                        ),
+                                        Text(
+                                          'Height: ${design.panelHeightMeters.toStringAsFixed(1)}m | Tilt: ${_tiltDegrees.toInt()}° | Row: ${_rowSpacingMeters.toStringAsFixed(1)}m',
+                                          style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 10),
+                                        ),
+                                      ],
+                                    ),
+                                    const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 14),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
 
                     // Visual Exploration Quick Links (3D/AR View & Shadow Simulation)
                     Row(
@@ -253,7 +397,7 @@ class _AgriPvSystemDesignScreenState extends State<AgriPvSystemDesignScreen> {
 
             // Navigation Buttons (< Previous, Next →)
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
               child: Row(
                 children: [
                   Expanded(
@@ -278,6 +422,16 @@ class _AgriPvSystemDesignScreenState extends State<AgriPvSystemDesignScreen> {
             ),
           ],
         ),
+      ),
+      bottomNavigationBar: BottomNavBar(
+        currentIndex: 2,
+        onTap: (index) {
+          if (index == 0) context.go('/home');
+          if (index == 1) context.go('/farms');
+          if (index == 2) context.go('/farm-location');
+          if (index == 3) context.go('/reports');
+          if (index == 4) context.go('/profile');
+        },
       ),
     );
   }

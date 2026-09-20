@@ -21,6 +21,24 @@ class SiteSuitabilityScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF0F172A)),
+          onPressed: () => context.go('/farm-details'),
+        ),
+        title: const Text(
+          'Site Suitability',
+          style: TextStyle(
+            color: Color(0xFF0F172A),
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+            fontFamily: 'Inter',
+          ),
+        ),
+        centerTitle: true,
+      ),
       body: SafeArea(
         child: Column(
           children: [
@@ -31,7 +49,6 @@ class SiteSuitabilityScreen extends StatelessWidget {
                 if (step == 1) context.go('/farm-location');
                 if (step == 2) context.go('/farm-details');
                 if (step == 4) context.go('/agri-pv-design');
-                if (step == 5) context.go('/proposal-report');
               },
             ),
 
@@ -219,7 +236,7 @@ class SiteSuitabilityScreen extends StatelessWidget {
 
             // Navigation Buttons (< Previous, Next →)
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
               child: Row(
                 children: [
                   Expanded(
@@ -244,6 +261,16 @@ class SiteSuitabilityScreen extends StatelessWidget {
             ),
           ],
         ),
+      ),
+      bottomNavigationBar: BottomNavBar(
+        currentIndex: 2,
+        onTap: (index) {
+          if (index == 0) context.go('/home');
+          if (index == 1) context.go('/farms');
+          if (index == 2) context.go('/farm-location');
+          if (index == 3) context.go('/reports');
+          if (index == 4) context.go('/profile');
+        },
       ),
     );
   }

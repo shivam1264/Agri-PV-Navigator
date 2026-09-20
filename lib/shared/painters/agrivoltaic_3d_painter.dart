@@ -1,15 +1,15 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 
-/// Custom Painter that renders an isometric 3D Agri-PV system:
-/// Elevated steel stilt columns, torque beams, tilted photovoltaic modules,
-/// crops growing underneath, and realistic sunlight shadows.
+/// A highly realistic custom 3D Agri-PV visualization painter.
+/// Features proper perspective projection, detailed solar modules, dynamic shadows,
+/// green crop field, and a living sky.
 class Agrivoltaic3dPainter extends CustomPainter {
-  final double rotationAngle; // in radians, controls 3D viewpoint
-  final double zoom;          // 0.8 to 1.5
-  final double panelTiltDeg;  // e.g. 20 degrees
-  final double rowSpacingM;   // e.g. 6.0 meters
-  final double timeOfDayHour; // 6.0 to 18.0 (for dynamic shadow direction)
+  final double rotationAngle;
+  final double zoom;
+  final double panelTiltDeg;
+  final double rowSpacingM;
+  final double timeOfDayHour;
 
   Agrivoltaic3dPainter({
     this.rotationAngle = 0.35,
@@ -23,218 +23,339 @@ class Agrivoltaic3dPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final w = size.width;
     final h = size.height;
+    final horizonY = h * 0.38;
 
-    // 1. Sky & Horizon Gradient
-    final skyPaint = Paint()
-      ..shader = const LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [Color(0xFF87CEEB), Color(0xFFD4E9F7), Color(0xFFF3F8FA)],
-        stops: [0.0, 0.45, 0.55],
-      ).createShader(Rect.fromLTWH(0, 0, w, h));
-    canvas.drawRect(Rect.fromLTWH(0, 0, w, h), skyPaint);
+    // ── 1. SKY ────────────────────────────────────────────────────────────────
+    final bool isMorning = timeOfDayHour < 9;
+    final bool isEvening = timeOfDayHour > 15;
+    final List<Color> skyColors = isMorning
+        ? [const Color(0xFFFF9966), const Color(0xFFFFD194), const Color(0xFF87CEEB)]
+        : isEvening
+            ? [const Color(0xFFFF6B35), const Color(0xFFFFAA44), const Color(0xFF6B8ED6)]
+            : [const Color(0xFF2196F3), const Color(0xFF64B5F6), const Color(0xFFBBDEFB), const Color(0xFFE3F2FD)];
+    final skyStops = isMorning || isEvening
+        ? [0.0, 0.4, 1.0]
+        : [0.0, 0.3, 0.7, 1.0];
 
-    // 2. Horizon Line
-    final horizonY = h * 0.42;
+    canvas.drawRect(
+      Rect.fromLTWH(0, 0, w, h),
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: skyColors,
+          stops: skyStops,
+        ).createShader(Rect.fromLTWH(0, 0, w, h)),
+    );
 
-    // Distant mountain / tree silhouettes
-    final hillPaint = Paint()..color = const Color(0xFF6B8E5E);
+    // ── 2. SUN ────────────────────────────────────────────────────────────────
+    final sunProgress = (timeOfDayHour - 6) / 12.0; // 0 at 6am, 1 at 6pm
+    final sunX = w * sunProgress;
+    // Parabola: high at noon, low at ends
+    final sunY = horizonY - (sin(sunProgress * pi) * horizonY * 0.75);
+    final sunColor = isMorning || isEvening ? const Color(0xFFFF9800) : const Color(0xFFFDD835);
+    final sunGlowPaint = Paint()
+      ..color = sunColor.withValues(alpha: 0.25)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 20);
+    canvas.drawCircle(Offset(sunX, sunY), 24, sunGlowPaint);
+    canvas.drawCircle(Offset(sunX, sunY), 12, Paint()..color = sunColor);
+
+    // ── 3. CLOUDS ─────────────────────────────────────────────────────────────
+    final cloudPaint = Paint()..color = Colors.white.withValues(alpha: 0.85);
+    _drawCloud(canvas, Offset(w * 0.2, horizonY * 0.3), 28, cloudPaint);
+    _drawCloud(canvas, Offset(w * 0.65, horizonY * 0.2), 20, cloudPaint);
+    _drawCloud(canvas, Offset(w * 0.85, horizonY * 0.45), 16, cloudPaint);
+
+    // ── 4. DISTANT HILLS / TREELINE ───────────────────────────────────────────
+    final hillPaint = Paint()..color = const Color(0xFF5C8A4A).withValues(alpha: 0.8);
     final hillPath = Path()
-      ..moveTo(0, horizonY)
-      ..quadraticBezierTo(w * 0.25, horizonY - 14, w * 0.5, horizonY - 4)
-      ..quadraticBezierTo(w * 0.75, horizonY - 20, w, horizonY - 6)
-      ..lineTo(w, horizonY + 10)
-      ..lineTo(0, horizonY + 10)
+      ..moveTo(0, horizonY + 2)
+      ..quadraticBezierTo(w * 0.15, horizonY - 18, w * 0.3, horizonY - 6)
+      ..quadraticBezierTo(w * 0.45, horizonY - 28, w * 0.6, horizonY - 10)
+      ..quadraticBezierTo(w * 0.75, horizonY - 22, w * 0.9, horizonY - 5)
+      ..lineTo(w, horizonY)
+      ..lineTo(w, horizonY + 15)
+      ..lineTo(0, horizonY + 15)
       ..close();
     canvas.drawPath(hillPath, hillPaint);
 
-    // 3. Ground / Crop Field (Lush Green with Perspective Rows)
+    // ── 5. GROUND FIELD ───────────────────────────────────────────────────────
     final groundPaint = Paint()
-      ..shader = const LinearGradient(
+      ..shader = LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
-        colors: [Color(0xFF3F682F), Color(0xFF2E5321), Color(0xFF234418)],
+        colors: [const Color(0xFF4CAF50), const Color(0xFF388E3C), const Color(0xFF2E7D32)],
       ).createShader(Rect.fromLTWH(0, horizonY, w, h - horizonY));
     canvas.drawRect(Rect.fromLTWH(0, horizonY, w, h - horizonY), groundPaint);
 
-    // Perspective Crop Rows radiating from vanishing point
-    final vanishingPoint = Offset(w * 0.5, horizonY);
-    final cropRowPaint = Paint()
-      ..color = const Color(0x334CAF50)
-      ..strokeWidth = 3.0;
+    // Soil path / dirt track in perspective
+    final soilPaint = Paint()..color = const Color(0xFF8D6E63).withValues(alpha: 0.5);
+    final soilPath = Path()
+      ..moveTo(w * 0.47, horizonY)
+      ..lineTo(w * 0.53, horizonY)
+      ..lineTo(w * 0.65, h)
+      ..lineTo(w * 0.35, h)
+      ..close();
+    canvas.drawPath(soilPath, soilPaint);
 
-    for (int i = -8; i <= 8; i++) {
-      final bottomX = (w * 0.5) + (i * (w / 7.5));
-      canvas.drawLine(vanishingPoint, Offset(bottomX, h), cropRowPaint);
+    // Perspective crop row lines vanishing at horizon center
+    final vp = Offset(w * 0.5, horizonY); // vanishing point
+    final rowLinePaint = Paint()
+      ..color = const Color(0xFF2E7D32).withValues(alpha: 0.45)
+      ..strokeWidth = 1.5;
+    for (int i = -10; i <= 10; i++) {
+      if (i == 0) continue;
+      final bx = w * 0.5 + i * (w / 9.0);
+      canvas.drawLine(vp, Offset(bx.clamp(0, w), h.toDouble()), rowLinePaint);
     }
 
-    // Wheat texture / tufts on ground
-    final wheatPaint = Paint()..color = const Color(0xFF7CB342);
-    final random = Random(42);
-    for (int j = 0; j < 60; j++) {
-      final y = horizonY + 15 + random.nextDouble() * (h - horizonY - 30);
-      final scale = (y - horizonY) / (h - horizonY);
-      final x = random.nextDouble() * w;
-      canvas.drawLine(
-        Offset(x, y),
-        Offset(x + (random.nextDouble() * 4 - 2), y - (6 * scale)),
-        wheatPaint..strokeWidth = 1.2 * scale,
-      );
+    // ── 6. WHEAT CROP STALKS (perspective-scaled tufts) ───────────────────────
+    final rng = Random(12345);
+    final wheatPaint = Paint()..strokeCap = StrokeCap.round;
+    for (int j = 0; j < 120; j++) {
+      final fy = horizonY + 10 + rng.nextDouble() * (h - horizonY - 20);
+      final scale = ((fy - horizonY) / (h - horizonY)).clamp(0.1, 1.0);
+      // avoid the dirt path in middle
+      double fx = rng.nextDouble() * w;
+      if (fx > w * 0.42 && fx < w * 0.58) continue;
+      final stalkH = 10.0 * scale + rng.nextDouble() * 6 * scale;
+      final lean = (rng.nextDouble() - 0.5) * 4;
+      wheatPaint.color = const Color(0xFF8BC34A).withValues(alpha: 0.7 + rng.nextDouble() * 0.3);
+      wheatPaint.strokeWidth = 1.2 * scale;
+      canvas.drawLine(Offset(fx, fy), Offset(fx + lean, fy - stalkH), wheatPaint);
+      // wheat head
+      canvas.drawCircle(Offset(fx + lean, fy - stalkH), 1.8 * scale,
+          Paint()..color = const Color(0xFFCDDC39).withValues(alpha: 0.9));
     }
 
-    // 4. Calculate Sun & Shadow Vector
-    final sunAngle = ((timeOfDayHour - 6) / 12.0) * pi; // 0 at 6am, pi/2 at 12pm, pi at 6pm
-    final shadowOffsetX = -cos(sunAngle) * 55 * zoom;
-    final shadowOffsetY = (1.1 - sin(sunAngle)) * 30 * zoom;
+    // ── 7. SHADOW + 3D STRUCTURE ──────────────────────────────────────────────
+    final sunAngle = sunProgress * pi; // 0=east, pi/2=south, pi=west
+    final shadowLength = (1.2 - sin(sunAngle)) * 55 * zoom;
+    final shadowDirX = -cos(sunAngle - pi * 0.5) * shadowLength;
+    final shadowDirY = cos(sunAngle) * shadowLength * 0.4;
 
-    // 5. Draw Agri-PV Elevated Structure (Rows of Panels)
     canvas.save();
-    canvas.translate(w * 0.5, h * 0.60);
+    // Pivot at a scenic spot on the ground
+    final cx = w * 0.5;
+    final cy = horizonY + (h - horizonY) * 0.52;
+    canvas.translate(cx, cy);
     canvas.scale(zoom);
 
-    // Dynamic rotation offset
-    final rotCos = cos(rotationAngle);
-    final rotSin = sin(rotationAngle);
+    // isometric-style view angle driven by rotationAngle
+    final viewAngle = pi / 6 + rotationAngle * 0.15; // slight tilt
 
-    // 3 parallel elevated rows
-    final rowSpacing = (rowSpacingM * 11.0);
-    final rows = [-1.0, 0.0, 1.0];
+    // Rows: -1 (back), 0 (mid), +1 (front)
+    final rowOffsets = [-1.0, 0.0, 1.0];
+    final rowSpacePx = rowSpacingM * 13.0;
+    const panelCount = 7;
+    const panelWidth = 24.0;
+    const panelGap = 2.0;
+    const structureHeight = 68.0; // ~2.8 m elevated
 
-    for (final rowIdx in rows) {
-      final baseRowY = rowIdx * rowSpacing * rotCos;
-      final baseRowX = rowIdx * rowSpacing * rotSin * 0.7;
+    for (int ri = 0; ri < rowOffsets.length; ri++) {
+      final rowFactor = rowOffsets[ri];
+      // Row position in pseudo-3D isometric space
+      final rowBaseX = rowFactor * rowSpacePx * sin(viewAngle) * 0.5;
+      final rowBaseY = rowFactor * rowSpacePx * cos(viewAngle) * 0.65;
 
-      // 4 mounting stilt pillars per row
-      final pillarXPositions = [-90.0, -30.0, 30.0, 90.0];
-      const pillarHeight = 70.0; // elevated ~2.8 meters representation
+      // Depth-based scale so back rows look farther
+      final depthScale = 1.0 - (rowFactor + 1.0) * 0.06;
 
-      // --- Draw Shadows of Panels on Ground ---
-      final shadowPaint = Paint()
-        ..color = Colors.black.withValues(alpha: 0.35)
-        ..style = PaintingStyle.fill;
+      // ── Panel shadow on ground ────────────────────────────────────────────
+      final totalPanelWidth = panelCount * (panelWidth + panelGap) - panelGap;
+      final shadowAlpha = (0.45 * sin(sunAngle)).clamp(0.1, 0.5);
+      final sPaint = Paint()
+        ..color = Colors.black.withValues(alpha: shadowAlpha)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5);
 
-      final shadowPath = Path();
-      final sX1 = -110.0 + baseRowX + shadowOffsetX;
-      final sY1 = baseRowY + 10 + shadowOffsetY;
-      final sX2 = 110.0 + baseRowX + shadowOffsetX;
-      final sY2 = baseRowY + 10 + shadowOffsetY;
-      final sX3 = 105.0 + baseRowX + shadowOffsetX + 20;
-      final sY3 = baseRowY + 45 + shadowOffsetY;
-      final sX4 = -115.0 + baseRowX + shadowOffsetX + 20;
-      final sY4 = baseRowY + 45 + shadowOffsetY;
+      final shLeft = -totalPanelWidth * 0.5 + rowBaseX + shadowDirX;
+      final shTop = rowBaseY + shadowDirY;
+      final shadowRect = Rect.fromLTWH(
+        shLeft * depthScale,
+        shTop * depthScale,
+        totalPanelWidth * depthScale * 1.1,
+        18 * depthScale,
+      );
+      canvas.drawOval(shadowRect, sPaint);
 
-      shadowPath.moveTo(sX1, sY1);
-      shadowPath.lineTo(sX2, sY2);
-      shadowPath.lineTo(sX3, sY3);
-      shadowPath.lineTo(sX4, sY4);
-      shadowPath.close();
-      canvas.drawPath(shadowPath, shadowPaint);
-
-      // --- Draw Vertical Steel Pilings (Stilts) ---
-      final steelPillarPaint = Paint()
-        ..color = const Color(0xFF8899A6)
-        ..strokeWidth = 4.5
+      // ── Steel Stilt Pillars ───────────────────────────────────────────────
+      final pillarPaint = Paint()
+        ..color = const Color(0xFF90A4AE)
+        ..strokeWidth = 3.5 * depthScale
         ..strokeCap = StrokeCap.square;
+      final footingPaint = Paint()..color = const Color(0xFF607D8B);
 
-      final pillarBasePaint = Paint()
-        ..color = const Color(0xFF475569)
-        ..style = PaintingStyle.fill;
+      final pillarXs = [-totalPanelWidth * 0.5, -totalPanelWidth * 0.16,
+                         totalPanelWidth * 0.16,  totalPanelWidth * 0.5];
+      for (final px in pillarXs) {
+        final gx = (px + rowBaseX) * depthScale;
+        final gy = rowBaseY * depthScale + 10;
+        final tx = gx;
+        final ty = gy - structureHeight * depthScale;
 
-      for (final px in pillarXPositions) {
-        final groundX = px + baseRowX;
-        final groundY = baseRowY + 15;
-        final topX = groundX;
-        final topY = groundY - pillarHeight;
-
-        // Concrete footings at ground
+        // Concrete footing
         canvas.drawRRect(
           RRect.fromRectAndRadius(
-            Rect.fromCenter(center: Offset(groundX, groundY), width: 9, height: 6),
+            Rect.fromCenter(center: Offset(gx, gy + 3), width: 8 * depthScale, height: 5 * depthScale),
             const Radius.circular(2),
           ),
-          pillarBasePaint,
+          footingPaint,
         );
-
-        // Steel stilt post
-        canvas.drawLine(Offset(groundX, groundY), Offset(topX, topY), steelPillarPaint);
-
-        // Cross-bracing struts for agricultural clearance stability
-        canvas.drawLine(
-          Offset(groundX, groundY - 15),
-          Offset(groundX + 12, topY + 15),
-          Paint()..color = const Color(0xFF64748B)..strokeWidth = 2.0,
-        );
+        // Pillar
+        canvas.drawLine(Offset(gx, gy), Offset(tx, ty), pillarPaint);
+        // Cross brace
+        if (px != pillarXs.last) {
+          final nxt = pillarXs[pillarXs.indexOf(px) + 1];
+          final nGx = (nxt + rowBaseX) * depthScale;
+          canvas.drawLine(
+            Offset(gx, gy - structureHeight * depthScale * 0.3),
+            Offset(nGx, gy - structureHeight * depthScale * 0.7),
+            Paint()..color = const Color(0xFF78909C)..strokeWidth = 1.5 * depthScale,
+          );
+        }
       }
 
-      // --- Longitudinal Torque Tube / Girder ---
-      final girderY = baseRowY + 15 - pillarHeight;
+      // ── Longitudinal Torque Tube / Purlins ────────────────────────────────
+      final girderY = (rowBaseY * depthScale) + 10 - structureHeight * depthScale;
+      final torquePaint = Paint()
+        ..color = const Color(0xFFB0BEC5)
+        ..strokeWidth = 5.0 * depthScale
+        ..strokeCap = StrokeCap.round;
       canvas.drawLine(
-        Offset(-115.0 + baseRowX, girderY),
-        Offset(115.0 + baseRowX, girderY),
-        Paint()
-          ..color = const Color(0xFFB0BEC5)
-          ..strokeWidth = 5.0,
+        Offset((-totalPanelWidth * 0.55 + rowBaseX) * depthScale, girderY),
+        Offset((totalPanelWidth * 0.55 + rowBaseX) * depthScale, girderY),
+        torquePaint,
       );
 
-      // --- Solar PV Modules on Racking ---
-      // Tilted rectangular modules
-      final tiltRad = (panelTiltDeg) * (pi / 180);
-      final panelTiltHeight = 35.0 * cos(tiltRad);
+      // ── Solar PV Modules ─────────────────────────────────────────────────
+      final tiltRad = panelTiltDeg * pi / 180;
+      final panelRiseY = panelWidth * sin(tiltRad) * 0.8;
+      final panelRunY = panelWidth * cos(tiltRad) * 0.25;
 
-      for (double px = -110; px <= 80; px += 34) {
-        final mx1 = px + baseRowX;
-        final my1 = girderY - (panelTiltHeight * 0.5);
-        final mx2 = px + 30 + baseRowX;
-        final my2 = girderY - (panelTiltHeight * 0.5);
-        final mx3 = px + 28 + baseRowX + (rotSin * 10);
-        final my3 = girderY + (panelTiltHeight * 0.5);
-        final mx4 = px - 2 + baseRowX + (rotSin * 10);
-        final my4 = girderY + (panelTiltHeight * 0.5);
+      for (int pi2 = 0; pi2 < panelCount; pi2++) {
+        final startX = (-totalPanelWidth * 0.5 + pi2 * (panelWidth + panelGap));
+        final mx = (startX + rowBaseX) * depthScale;
+        final mx2 = (startX + panelWidth + rowBaseX) * depthScale;
+
+        // 4 corners of tilted panel in isometric view
+        final p1 = Offset(mx, girderY + panelRiseY * depthScale);
+        final p2 = Offset(mx2, girderY + panelRiseY * depthScale);
+        final p3 = Offset(mx2 + panelRunY * depthScale, girderY - panelRiseY * depthScale * 0.3);
+        final p4 = Offset(mx + panelRunY * depthScale, girderY - panelRiseY * depthScale * 0.3);
 
         final modulePath = Path()
-          ..moveTo(mx1, my1)
-          ..lineTo(mx2, my2)
-          ..lineTo(mx3, my3)
-          ..lineTo(mx4, my4)
+          ..moveTo(p1.dx, p1.dy)
+          ..lineTo(p2.dx, p2.dy)
+          ..lineTo(p3.dx, p3.dy)
+          ..lineTo(p4.dx, p4.dy)
           ..close();
 
-        // Deep Solar Blue with Glass Reflection
-        final pvPaint = Paint()
-          ..shader = const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF1E3A8A), Color(0xFF172554), Color(0xFF0F172A)],
-          ).createShader(Rect.fromLTRB(mx1, my1, mx3, my3));
-        canvas.drawPath(modulePath, pvPaint);
-
-        // Silver Anodized Aluminum Frame
+        // Solar glass — dark blue with light reflection
+        final lightFactor = sin(sunAngle).clamp(0.0, 1.0);
+        final baseBlue = const Color(0xFF0D2137);
+        final glintBlue = const Color(0xFF1565C0);
         canvas.drawPath(
           modulePath,
           Paint()
-            ..color = const Color(0xFFCBD5E1)
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 1.2,
+            ..shader = LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Color.lerp(baseBlue, glintBlue, lightFactor * 0.5)!,
+                baseBlue,
+                const Color(0xFF080F1A),
+              ],
+              stops: const [0.0, 0.5, 1.0],
+            ).createShader(Rect.fromLTRB(p1.dx, p1.dy, p3.dx, p3.dy)),
         );
 
-        // Silicon solar cell grid lines
-        final midY = (my1 + my3) / 2;
-        canvas.drawLine(
-          Offset((mx1 + mx4) / 2, midY),
-          Offset((mx2 + mx3) / 2, midY),
-          Paint()..color = const Color(0x33FFFFFF)..strokeWidth = 0.8,
+        // Aluminum frame
+        canvas.drawPath(
+          modulePath,
+          Paint()
+            ..color = const Color(0xFFCFD8DC)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1.4 * depthScale,
         );
+
+        // Cell grid lines (3×6 cells)
+        _drawCellGrid(canvas, p1, p2, p3, p4, depthScale);
+
+        // Specular glint
+        if (lightFactor > 0.3) {
+          final glintPath = Path()
+            ..moveTo(p1.dx + (p2.dx - p1.dx) * 0.1, p1.dy + (p4.dy - p1.dy) * 0.15)
+            ..lineTo(p1.dx + (p2.dx - p1.dx) * 0.25, p1.dy + (p4.dy - p1.dy) * 0.12)
+            ..lineTo(p1.dx + (p2.dx - p1.dx) * 0.22, p1.dy + (p4.dy - p1.dy) * 0.28)
+            ..lineTo(p1.dx + (p2.dx - p1.dx) * 0.08, p1.dy + (p4.dy - p1.dy) * 0.30)
+            ..close();
+          canvas.drawPath(
+            glintPath,
+            Paint()
+              ..color = Colors.white.withValues(alpha: lightFactor * 0.35)
+              ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2),
+          );
+        }
       }
     }
 
     canvas.restore();
+
+    // ── 8. ATMOSPHERE / DEPTH OVERLAY ────────────────────────────────────────
+    canvas.drawRect(
+      Rect.fromLTWH(0, horizonY - 10, w, 20),
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.lightBlue.withValues(alpha: 0.25),
+            Colors.transparent,
+          ],
+        ).createShader(Rect.fromLTWH(0, horizonY - 10, w, 20)),
+    );
+  }
+
+  void _drawCloud(Canvas canvas, Offset center, double r, Paint paint) {
+    canvas.drawCircle(center, r, paint);
+    canvas.drawCircle(Offset(center.dx + r * 0.8, center.dy + r * 0.1), r * 0.75, paint);
+    canvas.drawCircle(Offset(center.dx - r * 0.7, center.dy + r * 0.15), r * 0.6, paint);
+    canvas.drawRect(
+      Rect.fromLTWH(center.dx - r * 1.3, center.dy, r * 2.6, r * 0.5),
+      paint,
+    );
+  }
+
+  void _drawCellGrid(Canvas canvas, Offset p1, Offset p2, Offset p3, Offset p4, double scale) {
+    final gridPaint = Paint()
+      ..color = const Color(0x33FFFFFF)
+      ..strokeWidth = 0.6 * scale;
+    const cols = 6;
+    const rows = 3;
+    for (int c = 1; c < cols; c++) {
+      final t = c / cols;
+      canvas.drawLine(
+        Offset.lerp(p1, p2, t)! ,
+        Offset.lerp(p4, p3, t)!,
+        gridPaint,
+      );
+    }
+    for (int r = 1; r < rows; r++) {
+      final t = r / rows;
+      canvas.drawLine(
+        Offset.lerp(p1, p4, t)!,
+        Offset.lerp(p2, p3, t)!,
+        gridPaint,
+      );
+    }
   }
 
   @override
-  bool shouldRepaint(covariant Agrivoltaic3dPainter oldDelegate) {
-    return oldDelegate.rotationAngle != rotationAngle ||
-        oldDelegate.zoom != zoom ||
-        oldDelegate.panelTiltDeg != panelTiltDeg ||
-        oldDelegate.rowSpacingM != rowSpacingM ||
-        oldDelegate.timeOfDayHour != timeOfDayHour;
-  }
+  bool shouldRepaint(covariant Agrivoltaic3dPainter old) =>
+      old.rotationAngle != rotationAngle ||
+      old.zoom != zoom ||
+      old.panelTiltDeg != panelTiltDeg ||
+      old.rowSpacingM != rowSpacingM ||
+      old.timeOfDayHour != timeOfDayHour;
 }
+

@@ -4,7 +4,11 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_card.dart';
-import '../../../shared/painters/shadow_simulation_painter.dart';
+import '../../../shared/widgets/bottom_nav_bar.dart';
+import '../engine/scene_3d_controller.dart';
+import '../engine/camera_controller.dart';
+import 'widgets/realtime_agri_pv_3d_viewport.dart';
+import 'widgets/sun_time_slider.dart';
 
 class ShadowSimulationScreen extends StatefulWidget {
   const ShadowSimulationScreen({super.key});
@@ -14,30 +18,50 @@ class ShadowSimulationScreen extends StatefulWidget {
 }
 
 class _ShadowSimulationScreenState extends State<ShadowSimulationScreen> {
-  double _timeOfDayHour = 10.0; // 6.0 to 18.0
+  final Scene3dController _sceneController = Scene3dController();
 
-  // Calculate dynamic shaded area % based on time of day
-  // Noon has lowest shadow, morning and late afternoon have longest shadows
-  int get _shadedAreaPercent {
-    final distFromNoon = (_timeOfDayHour - 12.0).abs();
-    final pct = 15.0 + (distFromNoon * 4.5);
-    return pct.round().clamp(14, 45);
+  @override
+  void initState() {
+    super.initState();
+    _sceneController.cameraController.setPreset(CameraPreset.perspective);
+    _sceneController.addListener(_onSceneUpdate);
   }
 
-  String get _timeFormatted {
-    final hour = _timeOfDayHour.toInt();
-    if (hour == 12) return '12:00 PM';
-    if (hour > 12) return '${hour - 12}:00 PM';
-    return '$hour:00 AM';
+  @override
+  void dispose() {
+    _sceneController.removeListener(_onSceneUpdate);
+    _sceneController.dispose();
+    super.dispose();
+  }
+
+  void _onSceneUpdate() {
+    if (mounted) setState(() {});
+  }
+
+  // Calculate dynamic shaded area % based on time of day and solar elevation
+  int get _shadedAreaPercent {
+    final altDeg = _sceneController.sunController.solarAltitudeDeg;
+    if (altDeg <= 5) return 48;
+    // Lower altitude = longer shadows
+    final shade = (1.0 - (altDeg / 75.0)) * 32.0 + 14.0;
+    return shade.round().clamp(14, 52);
+  }
+
+  // PAR light penetration to understory crops
+  int get _parLightPenetrationPercent {
+    return (100 - _shadedAreaPercent * 0.75).round().clamp(60, 95);
   }
 
   @override
   Widget build(BuildContext context) {
+    final sun = _sceneController.sunController;
+    final camera = _sceneController.cameraController;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: Text(
-          'Shadow Simulation',
+          '3D Solar & Shadow Simulation',
           style: AppTypography.screenHeading.copyWith(fontSize: 18),
         ),
         leading: IconButton(
@@ -48,39 +72,59 @@ class _ShadowSimulationScreenState extends State<ShadowSimulationScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Dynamic Solar & Crop Shadow Visual Canvas
+            // Dynamic Real-Time 3D Shadow Viewport
             Expanded(
+              flex: 5,
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
+                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 6.0),
                 child: Container(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(18),
                     border: Border.all(color: AppColors.border, width: 1.5),
                     boxShadow: const [
-                      BoxShadow(
-                        color: AppColors.shadow,
-                        blurRadius: 10,
-                        offset: Offset(0, 3),
-                      ),
+                      BoxShadow(color: AppColors.shadow, blurRadius: 10, offset: Offset(0, 3)),
                     ],
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(17),
                     child: Stack(
                       children: [
-                        Positioned.fill(
-                          child: CustomPaint(
-                            painter: ShadowSimulationPainter(
-                              timeOfDayHour: _timeOfDayHour,
-                              rowSpacing: 6.0,
+                        // Real-Time 3D Farm & Dynamic Shadow Viewport
+                        RealtimeAgriPv3dViewport(
+                          controller: _sceneController,
+                          showSunGizmo: true,
+                          enableGestures: true,
+                        ),
+
+                        // Camera Preset Bar on Top Left
+                        Positioned(
+                          top: 10,
+                          left: 10,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.5),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                _buildCameraChip('3D Iso', CameraPreset.perspective),
+                                const SizedBox(width: 4),
+                                _buildCameraChip('Top Heatmap', CameraPreset.top),
+                                const SizedBox(width: 4),
+                                _buildCameraChip('Side Stilt', CameraPreset.side),
+                                const SizedBox(width: 4),
+                                _buildCameraChip('Sun Angle', CameraPreset.sun),
+                              ],
                             ),
                           ),
                         ),
 
-                        // Time pill overlay on top left
+                        // Live Sunlight & Shadow Angle Badge
                         Positioned(
-                          top: 12,
-                          left: 12,
+                          top: 10,
+                          right: 10,
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                             decoration: BoxDecoration(
@@ -89,10 +133,10 @@ class _ShadowSimulationScreenState extends State<ShadowSimulationScreen> {
                             ),
                             child: Row(
                               children: [
-                                const Icon(Icons.wb_sunny_rounded, color: AppColors.solar, size: 14),
+                                const Icon(Icons.wb_sunny_rounded, color: Color(0xFFFBC02D), size: 14),
                                 const SizedBox(width: 5),
                                 Text(
-                                  'Sun Position: $_timeFormatted',
+                                  'Alt: ${sun.solarAltitudeDeg.toInt()}° | Az: ${sun.solarAzimuthDeg.toInt()}°',
                                   style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
                                 ),
                               ],
@@ -100,19 +144,19 @@ class _ShadowSimulationScreenState extends State<ShadowSimulationScreen> {
                           ),
                         ),
 
-                        // Shaded area percentage pill on top right
+                        // Touch Instruction Tag
                         Positioned(
-                          top: 12,
-                          right: 12,
+                          bottom: 10,
+                          left: 10,
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                             decoration: BoxDecoration(
-                              color: AppColors.primaryDark.withValues(alpha: 0.85),
+                              color: Colors.black.withValues(alpha: 0.65),
                               borderRadius: BorderRadius.circular(20),
                             ),
-                            child: Text(
-                              'Crop Shaded: $_shadedAreaPercent%',
-                              style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
+                            child: const Text(
+                              'Drag to rotate 3D view | Scrub time slider below',
+                              style: TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w500),
                             ),
                           ),
                         ),
@@ -123,92 +167,50 @@ class _ShadowSimulationScreenState extends State<ShadowSimulationScreen> {
               ),
             ),
 
-            // Time-of-Day Slider Controls & Impact Metrics
+            // Time of Day Scrubber
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 6.0),
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
+              child: SunTimeSlider(
+                sunController: sun,
+                showPlayButton: true,
+              ),
+            ),
+            const SizedBox(height: 8),
+
+            // Microclimate & Crop Shading Analysis Card
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
               child: AppCard(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(12),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            const Icon(Icons.schedule_rounded, size: 18, color: AppColors.textSecondary),
-                            const SizedBox(width: 6),
-                            Text(
-                              'Time of Day',
-                              style: AppTypography.cardTitle.copyWith(fontSize: 14),
-                            ),
-                          ],
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: AppColors.primarySurface,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: AppColors.primaryLight.withValues(alpha: 0.3)),
-                          ),
-                          child: Text(
-                            _timeFormatted,
-                            style: AppTypography.cardTitle.copyWith(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.primaryDark,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-
-                    // Slider
-                    SliderTheme(
-                      data: SliderTheme.of(context).copyWith(
-                        activeTrackColor: AppColors.primary,
-                        inactiveTrackColor: AppColors.borderLight,
-                        thumbColor: AppColors.primary,
-                        trackHeight: 4.0,
-                        thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
-                      ),
-                      child: Slider(
-                        value: _timeOfDayHour,
-                        min: 6.0,
-                        max: 18.0,
-                        divisions: 12,
-                        onChanged: (val) => setState(() => _timeOfDayHour = val),
-                      ),
-                    ),
-
-                    // Slider Tick Labels (6 AM, 9 AM, 12 PM, 3 PM, 6 PM)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 10.0),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text('6 AM', style: TextStyle(fontSize: 10, color: AppColors.textTertiary)),
-                          Text('9 AM', style: TextStyle(fontSize: 10, color: AppColors.textTertiary)),
-                          Text('12 PM', style: TextStyle(fontSize: 10, color: AppColors.textTertiary)),
-                          Text('3 PM', style: TextStyle(fontSize: 10, color: AppColors.textTertiary)),
-                          Text('6 PM', style: TextStyle(fontSize: 10, color: AppColors.textTertiary)),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    const Divider(height: 1, color: AppColors.borderLight),
-                    const SizedBox(height: 12),
-
-                    // Microclimate benefits row
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
-                        _buildBenefitItem('94%', 'PAR Light Retained'),
-                        Container(height: 24, width: 1, color: AppColors.border),
-                        _buildBenefitItem('-22%', 'Water Evaporation'),
-                        Container(height: 24, width: 1, color: AppColors.border),
-                        _buildBenefitItem('+2.5°C', 'Summer Cooling'),
+                        _buildAnalysisMetric(
+                          icon: Icons.brightness_medium_rounded,
+                          title: 'PAR Light',
+                          value: '$_parLightPenetrationPercent%',
+                          color: AppColors.primary,
+                        ),
+                        _buildAnalysisMetric(
+                          icon: Icons.opacity_rounded,
+                          title: 'Moisture Saved',
+                          value: '+22%',
+                          color: AppColors.water,
+                        ),
+                        _buildAnalysisMetric(
+                          icon: Icons.thermostat_rounded,
+                          title: 'Heat Reduction',
+                          value: '-3.6 °C',
+                          color: AppColors.success,
+                        ),
+                        _buildAnalysisMetric(
+                          icon: Icons.brightness_6_rounded,
+                          title: 'Crop Shading',
+                          value: '$_shadedAreaPercent%',
+                          color: AppColors.solar,
+                        ),
                       ],
                     ),
                   ],
@@ -216,39 +218,26 @@ class _ShadowSimulationScreenState extends State<ShadowSimulationScreen> {
               ),
             ),
 
-            // Instruction subtitle
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 4.0),
-              child: Text(
-                'See how shadows move throughout the day and their impact on crops.',
-                style: AppTypography.labelSmall.copyWith(
-                  fontSize: 11,
-                  color: AppColors.textSecondary,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
-
             // Navigation Buttons (< Previous, Next →)
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 10),
               child: Row(
                 children: [
                   Expanded(
                     child: AppButton(
-                      text: '‹ Previous',
+                      text: '‹ 3D / AR View',
                       variant: AppButtonVariant.outline,
                       onPressed: () => context.go('/ar-3d-view'),
-                      height: 46,
+                      height: 44,
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: AppButton(
-                      text: 'Next ›',
+                      text: 'View Proposal ›',
                       variant: AppButtonVariant.primary,
-                      onPressed: () => context.go('/compare-designs'),
-                      height: 46,
+                      onPressed: () => context.go('/proposal-report'),
+                      height: 44,
                     ),
                   ),
                 ],
@@ -257,23 +246,68 @@ class _ShadowSimulationScreenState extends State<ShadowSimulationScreen> {
           ],
         ),
       ),
+      bottomNavigationBar: BottomNavBar(
+        currentIndex: 2,
+        onTap: (index) {
+          if (index == 0) context.go('/home');
+          if (index == 1) context.go('/farms');
+          if (index == 2) context.go('/farm-location');
+          if (index == 3) context.go('/proposal-report');
+          if (index == 4) context.go('/profile');
+        },
+      ),
     );
   }
 
-  Widget _buildBenefitItem(String value, String label) {
+  Widget _buildCameraChip(String label, CameraPreset preset) {
+    final isSelected = _sceneController.cameraController.currentPreset == preset;
+    return GestureDetector(
+      onTap: () => _sceneController.cameraController.setPreset(
+        preset,
+        currentSunAzimuthRad: _sceneController.sunController.solarAzimuthRad,
+      ),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 10.5,
+            fontWeight: FontWeight.w600,
+            color: isSelected ? Colors.white : Colors.white70,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAnalysisMetric({
+    required IconData icon,
+    required String title,
+    required String value,
+    required Color color,
+  }) {
     return Column(
       children: [
+        Icon(icon, color: color, size: 18),
+        const SizedBox(height: 3),
         Text(
           value,
-          style: AppTypography.cardTitle.copyWith(
+          style: TextStyle(
             fontSize: 13,
-            fontWeight: FontWeight.w700,
-            color: AppColors.primary,
+            fontWeight: FontWeight.bold,
+            color: color,
           ),
         ),
         Text(
-          label,
-          style: AppTypography.labelSmall.copyWith(fontSize: 10),
+          title,
+          style: const TextStyle(
+            fontSize: 10,
+            color: AppColors.textSecondary,
+          ),
         ),
       ],
     );

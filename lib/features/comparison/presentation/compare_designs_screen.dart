@@ -4,6 +4,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_card.dart';
+import '../../../shared/widgets/bottom_nav_bar.dart';
 import '../../../services/storage/mock_data_service.dart';
 
 class CompareDesignsScreen extends StatefulWidget {
@@ -91,7 +92,11 @@ class _CompareDesignsScreenState extends State<CompareDesignsScreen> {
                                     child: ClipRRect(
                                       borderRadius: BorderRadius.circular(7),
                                       child: Image.asset(
-                                        'assets/images/onboarding_solar.jpg',
+                                        index == 0
+                                            ? 'assets/images/design_a_elevated.jpg'
+                                            : index == 1
+                                                ? 'assets/images/design_b_tracker.jpg'
+                                                : 'assets/images/design_c_greenhouse.jpg',
                                         fit: BoxFit.cover,
                                       ),
                                     ),
@@ -204,7 +209,7 @@ class _CompareDesignsScreenState extends State<CompareDesignsScreen> {
 
             // Navigation Buttons
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
               child: Row(
                 children: [
                   Expanded(
@@ -229,6 +234,16 @@ class _CompareDesignsScreenState extends State<CompareDesignsScreen> {
             ),
           ],
         ),
+      ),
+      bottomNavigationBar: BottomNavBar(
+        currentIndex: 2,
+        onTap: (index) {
+          if (index == 0) context.go('/home');
+          if (index == 1) context.go('/farms');
+          if (index == 2) context.go('/farm-location');
+          if (index == 3) context.go('/reports');
+          if (index == 4) context.go('/profile');
+        },
       ),
     );
   }

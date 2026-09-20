@@ -187,7 +187,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     switch (type) {
       case 0:
         return Image.asset(
-          'assets/images/onboarding_solar.jpg',
+          'assets/images/hero_agri_pv.jpg',
           fit: BoxFit.cover,
           errorBuilder: (context, error, stackTrace) => CustomPaint(
             painter: Agrivoltaic3dPainter(
@@ -200,18 +200,32 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           ),
         );
       case 1:
-        return CustomPaint(
-          painter: FarmBoundaryPainter(
-            areaAcres: 2.35,
-            showPins: true,
-          ),
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.asset(
+              'assets/images/farm_aerial_01.jpg',
+              fit: BoxFit.cover,
+            ),
+            CustomPaint(
+              painter: FarmBoundaryPainter(
+                areaAcres: 2.35,
+                showPins: true,
+                drawBackground: false,
+              ),
+            ),
+          ],
         );
       case 2:
       default:
-        return CustomPaint(
-          painter: ShadowSimulationPainter(
-            timeOfDayHour: 10.0,
-            rowSpacing: 6.0,
+        return Image.asset(
+          'assets/images/agri_pv_3d_render.jpg',
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) => CustomPaint(
+            painter: ShadowSimulationPainter(
+              timeOfDayHour: 10.0,
+              rowSpacing: 6.0,
+            ),
           ),
         );
     }

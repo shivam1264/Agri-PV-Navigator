@@ -3,8 +3,12 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/app_button.dart';
-import '../../../shared/widgets/app_card.dart';
-import '../../../shared/painters/agrivoltaic_3d_painter.dart';
+import '../../../shared/widgets/bottom_nav_bar.dart';
+import '../engine/scene_3d_controller.dart';
+import '../engine/design_configuration.dart';
+import '../engine/camera_controller.dart';
+import 'widgets/realtime_agri_pv_3d_viewport.dart';
+import 'widgets/sun_time_slider.dart';
 
 class Ar3dViewScreen extends StatefulWidget {
   const Ar3dViewScreen({super.key});
@@ -14,33 +18,64 @@ class Ar3dViewScreen extends StatefulWidget {
 }
 
 class _Ar3dViewScreenState extends State<Ar3dViewScreen> {
+  final Scene3dController _sceneController = Scene3dController();
   bool _isArView = false;
-  double _rotationAngle = 0.35;
-  double _zoom = 1.0;
-  double _timeOfDay = 10.0;
+  int _controlTab = 0; // 0: Sun/Time, 1: Structure (Tilt/Height/Spacing), 2: Crops
+
+  @override
+  void initState() {
+    super.initState();
+    _sceneController.addListener(_onSceneUpdate);
+  }
+
+  @override
+  void dispose() {
+    _sceneController.removeListener(_onSceneUpdate);
+    _sceneController.dispose();
+    super.dispose();
+  }
+
+  void _onSceneUpdate() {
+    if (mounted) setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) {
+    final config = _sceneController.designConfig;
+    final camera = _sceneController.cameraController;
+    final sun = _sceneController.sunController;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: Text(
-          '3D / AR Visualization',
+          '3D / AR Digital Twin Simulation',
           style: AppTypography.screenHeading.copyWith(fontSize: 18),
         ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
           onPressed: () => context.go('/agri-pv-design'),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.restart_alt_rounded),
+            tooltip: 'Reset 3D Scene',
+            onPressed: () {
+              config.resetToDefaults();
+              camera.reset();
+              sun.timeOfDayHour = 10.5;
+            },
+          ),
+        ],
       ),
       body: SafeArea(
         child: Column(
           children: [
-            // Segmented Mode Selector [3D View] | [AR View]
+            // Top Mode Switcher [3D Digital Twin] | [AR Live View]
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
+              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 6.0),
               child: Container(
-                height: 42,
+                height: 40,
                 decoration: BoxDecoration(
                   color: AppColors.surfaceSecondary,
                   borderRadius: BorderRadius.circular(100),
@@ -56,13 +91,21 @@ class _Ar3dViewScreenState extends State<Ar3dViewScreen> {
                             borderRadius: BorderRadius.circular(100),
                           ),
                           child: Center(
-                            child: Text(
-                              '3D View',
-                              style: TextStyle(
-                                color: !_isArView ? Colors.white : AppColors.textSecondary,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 13,
-                              ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.threed_rotation_rounded,
+                                    size: 16, color: !_isArView ? Colors.white : AppColors.textSecondary),
+                                const SizedBox(width: 6),
+                                Text(
+                                  '3D Digital Twin',
+                                  style: TextStyle(
+                                    color: !_isArView ? Colors.white : AppColors.textSecondary,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
@@ -77,13 +120,21 @@ class _Ar3dViewScreenState extends State<Ar3dViewScreen> {
                             borderRadius: BorderRadius.circular(100),
                           ),
                           child: Center(
-                            child: Text(
-                              'AR View',
-                              style: TextStyle(
-                                color: _isArView ? Colors.white : AppColors.textSecondary,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 13,
-                              ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.view_in_ar_rounded,
+                                    size: 16, color: _isArView ? Colors.white : AppColors.textSecondary),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'AR Field View',
+                                  style: TextStyle(
+                                    color: _isArView ? Colors.white : AppColors.textSecondary,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
@@ -94,133 +145,171 @@ class _Ar3dViewScreenState extends State<Ar3dViewScreen> {
               ),
             ),
 
-            // Main Interactive 3D / AR Canvas
+            // Main 3D Viewport / AR Surface
             Expanded(
+              flex: 5,
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20.0),
                 child: Container(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(18),
                     border: Border.all(color: AppColors.border, width: 1.5),
-                    color: Colors.white,
                     boxShadow: const [
-                      BoxShadow(
-                        color: AppColors.shadow,
-                        blurRadius: 10,
-                        offset: Offset(0, 3),
-                      ),
+                      BoxShadow(color: AppColors.shadow, blurRadius: 10, offset: Offset(0, 3)),
                     ],
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(17),
                     child: Stack(
                       children: [
-                        // If AR View mode
                         if (_isArView)
-                          Container(
-                            color: Colors.black87,
-                            child: Center(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(Icons.camera_alt_outlined, color: Colors.white70, size: 54),
-                                  const SizedBox(height: 12),
-                                  Text(
-                                    'AR Camera Active',
-                                    style: AppTypography.cardTitle.copyWith(color: Colors.white),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    'Point phone camera at your field to superimpose Agri-PV stilt pillars.',
-                                    style: AppTypography.bodySmall.copyWith(color: Colors.white60),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                  const SizedBox(height: 20),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.primary.withValues(alpha: 0.8),
-                                      borderRadius: BorderRadius.circular(100),
-                                    ),
-                                    child: const Text(
-                                      'Surface Detected (Ground Plane)',
-                                      style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
-                                    ),
-                                  ),
-                                ],
+                          // Live AR Camera Overlay Simulation
+                          Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              Image.asset(
+                                'assets/images/hero_agri_pv.jpg',
+                                fit: BoxFit.cover,
                               ),
-                            ),
+                              Container(
+                                color: Colors.black.withValues(alpha: 0.35),
+                              ),
+                              Center(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: Colors.white.withValues(alpha: 0.2),
+                                        border: Border.all(color: Colors.white, width: 2),
+                                      ),
+                                      child: const Icon(Icons.view_in_ar_rounded, color: Colors.white, size: 36),
+                                    ),
+                                    const SizedBox(height: 10),
+                                    Text(
+                                      'AR Spatial Anchor Active',
+                                      style: AppTypography.cardTitle.copyWith(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w700,
+                                        shadows: [
+                                          const Shadow(color: Colors.black54, blurRadius: 4),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                                      child: Text(
+                                        'Superimposing ${config.panelHeight.toStringAsFixed(1)}m stilts and ${config.cropType.label} crop rows with true sun alignment.',
+                                        style: AppTypography.bodySmall.copyWith(
+                                          color: Colors.white.withValues(alpha: 0.9),
+                                          shadows: [
+                                            const Shadow(color: Colors.black54, blurRadius: 4),
+                                          ],
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 14),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primary.withValues(alpha: 0.9),
+                                        borderRadius: BorderRadius.circular(100),
+                                      ),
+                                      child: const Text(
+                                        'Surface Detected: Ground Plane (±1.5cm)',
+                                        style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           )
                         else
-                          // 3D Canvas with drag rotation
-                          GestureDetector(
-                            onPanUpdate: (details) {
-                              setState(() {
-                                _rotationAngle += details.delta.dx * 0.01;
-                              });
-                            },
-                            child: CustomPaint(
-                              size: Size.infinite,
-                              painter: Agrivoltaic3dPainter(
-                                rotationAngle: _rotationAngle,
-                                zoom: _zoom,
-                                panelTiltDeg: 20,
-                                rowSpacingM: 6.0,
-                                timeOfDayHour: _timeOfDay,
+                          // Real-Time 3D Interactive Scene Viewport
+                          RealtimeAgriPv3dViewport(
+                            controller: _sceneController,
+                            showSunGizmo: true,
+                            enableGestures: true,
+                          ),
+
+                        // Camera View Preset Badges on Top-Left
+                        if (!_isArView)
+                          Positioned(
+                            top: 10,
+                            left: 10,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.5),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  _buildCameraPresetChip('3D Iso', CameraPreset.perspective),
+                                  const SizedBox(width: 4),
+                                  _buildCameraPresetChip('Top', CameraPreset.top),
+                                  const SizedBox(width: 4),
+                                  _buildCameraPresetChip('Side', CameraPreset.side),
+                                  const SizedBox(width: 4),
+                                  _buildCameraPresetChip('Sun', CameraPreset.sun),
+                                ],
                               ),
                             ),
                           ),
 
-                        // Interactive 3D Canvas Controls (Rotate, Zoom, Reset)
+                        // Interactive Camera Navigation Tools on Top-Right
                         if (!_isArView)
                           Positioned(
-                            top: 12,
-                            right: 12,
+                            top: 10,
+                            right: 10,
                             child: Column(
                               children: [
                                 _buildToolButton(
                                   icon: Icons.rotate_right_rounded,
-                                  tooltip: 'Rotate View',
-                                  onTap: () => setState(() => _rotationAngle += 0.35),
+                                  tooltip: 'Orbit 45°',
+                                  onTap: () => camera.onDragOrbit(35.0, 0.0),
                                 ),
-                                const SizedBox(height: 8),
+                                const SizedBox(height: 6),
                                 _buildToolButton(
                                   icon: Icons.zoom_in_rounded,
                                   tooltip: 'Zoom In',
-                                  onTap: () => setState(() => _zoom = (_zoom + 0.15).clamp(0.8, 1.6)),
+                                  onTap: () => camera.onPinchZoom(1.15),
                                 ),
                                 const SizedBox(height: 6),
                                 _buildToolButton(
                                   icon: Icons.zoom_out_rounded,
                                   tooltip: 'Zoom Out',
-                                  onTap: () => setState(() => _zoom = (_zoom - 0.15).clamp(0.8, 1.6)),
+                                  onTap: () => camera.onPinchZoom(0.85),
                                 ),
                                 const SizedBox(height: 6),
                                 _buildToolButton(
-                                  icon: Icons.refresh_rounded,
-                                  tooltip: 'Reset',
-                                  onTap: () => setState(() {
-                                    _rotationAngle = 0.35;
-                                    _zoom = 1.0;
-                                  }),
+                                  icon: Icons.center_focus_strong_rounded,
+                                  tooltip: 'Reset View',
+                                  onTap: () => camera.reset(),
                                 ),
                               ],
                             ),
                           ),
 
-                        // Subtitle overlay tag at bottom left of canvas
+                        // Live Real-Time 3D Parameters Indicator
                         Positioned(
-                          bottom: 12,
-                          left: 12,
+                          bottom: 10,
+                          left: 10,
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                             decoration: BoxDecoration(
                               color: Colors.black.withValues(alpha: 0.65),
                               borderRadius: BorderRadius.circular(20),
                             ),
-                            child: const Text(
-                              'Rotate, zoom and see shadows across crops',
-                              style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w500),
+                            child: Text(
+                              'Tilt: ${config.panelTilt.toInt()}° | H: ${config.panelHeight.toStringAsFixed(1)}m | Spacing: ${config.rowSpacing.toStringAsFixed(1)}m | ${config.cropType.name.toUpperCase()}',
+                              style: const TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w600),
                             ),
                           ),
                         ),
@@ -230,67 +319,51 @@ class _Ar3dViewScreenState extends State<Ar3dViewScreen> {
                 ),
               ),
             ),
+            const SizedBox(height: 8),
 
-            // Time of Day Slider & Structure Specs Card
+            // Parametric Control Tabs: [Sun & Shadows] | [Structure 3D] | [Crops]
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 10, 20, 8),
-              child: AppCard(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  children: [
-                    // Time of Day slider
-                    Row(
-                      children: [
-                        const Icon(Icons.wb_sunny_rounded, color: AppColors.solar, size: 18),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Time of Day:',
-                          style: AppTypography.label.copyWith(fontWeight: FontWeight.w600),
-                        ),
-                        const Spacer(),
-                        Text(
-                          '${_timeOfDay.toInt()}:00 ${_timeOfDay >= 12 ? 'PM' : 'AM'}',
-                          style: AppTypography.cardTitle.copyWith(
-                            fontSize: 13,
-                            color: AppColors.primaryDark,
-                          ),
-                        ),
-                      ],
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
+              child: Row(
+                children: [
+                  _buildControlTab(0, 'Sun & Time', Icons.wb_sunny_rounded),
+                  const SizedBox(width: 6),
+                  _buildControlTab(1, '3D Structure', Icons.solar_power_rounded),
+                  const SizedBox(width: 6),
+                  _buildControlTab(2, 'Crops & Farm', Icons.eco_rounded),
+                ],
+              ),
+            ),
+            const SizedBox(height: 6),
+
+            // Dynamic Control Panel Sheet
+            Expanded(
+              flex: 4,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 220),
+                  switchInCurve: Curves.easeOutCubic,
+                  switchOutCurve: Curves.easeInCubic,
+                  transitionBuilder: (child, animation) {
+                    return FadeTransition(
+                      opacity: animation,
+                      child: child,
+                    );
+                  },
+                  child: KeyedSubtree(
+                    key: ValueKey<int>(_controlTab),
+                    child: SingleChildScrollView(
+                      child: _buildSelectedTabContent(config, sun),
                     ),
-                    SliderTheme(
-                      data: SliderTheme.of(context).copyWith(
-                        activeTrackColor: AppColors.solar,
-                        inactiveTrackColor: AppColors.borderLight,
-                        thumbColor: AppColors.solar,
-                        trackHeight: 3.5,
-                        thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-                      ),
-                      child: Slider(
-                        value: _timeOfDay,
-                        min: 6.0,
-                        max: 18.0,
-                        divisions: 12,
-                        onChanged: (val) => setState(() => _timeOfDay = val),
-                      ),
-                    ),
-                    // Structure metrics
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        _buildSpecItem('2.8 m', 'Panel Height'),
-                        _buildSpecItem('6.0 m', 'Row Spacing'),
-                        _buildSpecItem('40%', 'Coverage'),
-                        _buildSpecItem('~480', 'Panels'),
-                      ],
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),
 
             // Navigation Buttons (< Previous, Next →)
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
               child: Row(
                 children: [
                   Expanded(
@@ -298,22 +371,271 @@ class _Ar3dViewScreenState extends State<Ar3dViewScreen> {
                       text: '‹ Previous',
                       variant: AppButtonVariant.outline,
                       onPressed: () => context.go('/agri-pv-design'),
-                      height: 46,
+                      height: 44,
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: AppButton(
-                      text: 'Next ›',
+                      text: 'Shadow Sim ›',
                       variant: AppButtonVariant.primary,
                       onPressed: () => context.go('/shadow-simulation'),
-                      height: 46,
+                      height: 44,
                     ),
                   ),
                 ],
               ),
             ),
           ],
+        ),
+      ),
+      bottomNavigationBar: BottomNavBar(
+        currentIndex: 2,
+        onTap: (index) {
+          if (index == 0) context.go('/home');
+          if (index == 1) context.go('/farms');
+          if (index == 2) context.go('/farm-location');
+          if (index == 3) context.go('/proposal-report');
+          if (index == 4) context.go('/profile');
+        },
+      ),
+    );
+  }
+
+  Widget _buildControlTab(int index, String title, IconData icon) {
+    final isSelected = _controlTab == index;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _controlTab = index),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          decoration: BoxDecoration(
+            color: isSelected ? AppColors.primarySurface : AppColors.surface,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: isSelected ? AppColors.primary : AppColors.border,
+              width: isSelected ? 1.5 : 1.0,
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 14, color: isSelected ? AppColors.primary : AppColors.textSecondary),
+              const SizedBox(width: 4),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  color: isSelected ? AppColors.primaryDark : AppColors.textPrimary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSelectedTabContent(DesignConfiguration config, dynamic sun) {
+    if (_controlTab == 0) {
+      // Tab 0: Sun Position & Shadow Scrubbing
+      return SunTimeSlider(
+        sunController: _sceneController.sunController,
+        showPlayButton: true,
+      );
+    } else if (_controlTab == 1) {
+      // Tab 1: Real-time 3D Structure Sliders
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.border, width: 1.2),
+        ),
+        child: Column(
+          children: [
+            // Tilt Slider
+            _buildSliderRow(
+              label: 'Panel Tilt Angle',
+              valueStr: '${config.panelTilt.toInt()}°',
+              value: config.panelTilt,
+              min: 0.0,
+              max: 45.0,
+              divisions: 45,
+              onChanged: (val) => config.panelTilt = val,
+            ),
+            const Divider(height: 12, color: AppColors.borderLight),
+            // Height Slider
+            _buildSliderRow(
+              label: 'Mounting Stilt Height',
+              valueStr: '${config.panelHeight.toStringAsFixed(1)} m',
+              value: config.panelHeight,
+              min: 1.5,
+              max: 5.0,
+              divisions: 35,
+              onChanged: (val) => config.panelHeight = val,
+            ),
+            const Divider(height: 12, color: AppColors.borderLight),
+            // Row Spacing Slider
+            _buildSliderRow(
+              label: 'Row Spacing (Pitch)',
+              valueStr: '${config.rowSpacing.toStringAsFixed(1)} m',
+              value: config.rowSpacing,
+              min: 3.0,
+              max: 12.0,
+              divisions: 18,
+              onChanged: (val) => config.rowSpacing = val,
+            ),
+          ],
+        ),
+      );
+    } else {
+      // Tab 2: Crop Type Selection & 3D Row Density
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.border, width: 1.2),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Select 3D Under-Canopy Crop',
+              style: AppTypography.label.copyWith(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: AgriCrop3dType.values.map((crop) {
+                final isSelected = config.cropType == crop;
+                return Expanded(
+                  child: GestureDetector(
+                    onTap: () => config.cropType = crop,
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 3),
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      decoration: BoxDecoration(
+                        color: isSelected ? AppColors.primary : AppColors.surfaceSecondary,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Center(
+                        child: Text(
+                          crop.name[0].toUpperCase() + crop.name.substring(1),
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                            color: isSelected ? Colors.white : AppColors.textPrimary,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 10),
+            // Number of Panel Rows
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Active Solar Array Rows:', style: AppTypography.bodySmall),
+                Row(
+                  children: [2, 3, 4, 5].map((r) {
+                    final isSel = config.panelRows == r;
+                    return GestureDetector(
+                      onTap: () => config.panelRows = r,
+                      child: Container(
+                        margin: const EdgeInsets.only(left: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: isSel ? AppColors.primary : AppColors.surfaceSecondary,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          '$r',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: isSel ? Colors.white : AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  Widget _buildSliderRow({
+    required String label,
+    required String valueStr,
+    required double value,
+    required double min,
+    required double max,
+    required int divisions,
+    required ValueChanged<double> onChanged,
+  }) {
+    return Row(
+      children: [
+        SizedBox(
+          width: 130,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+              Text(valueStr, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.primaryDark)),
+            ],
+          ),
+        ),
+        Expanded(
+          child: SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              trackHeight: 3.5,
+              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
+              activeTrackColor: AppColors.primary,
+              inactiveTrackColor: AppColors.borderLight,
+              thumbColor: AppColors.primary,
+            ),
+            child: Slider(
+              value: value,
+              min: min,
+              max: max,
+              divisions: divisions,
+              onChanged: onChanged,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCameraPresetChip(String label, CameraPreset preset) {
+    final isSelected = _sceneController.cameraController.currentPreset == preset;
+    return GestureDetector(
+      onTap: () => _sceneController.cameraController.setPreset(
+        preset,
+        currentSunAzimuthRad: _sceneController.sunController.solarAzimuthRad,
+      ),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 10.5,
+            fontWeight: FontWeight.w600,
+            color: isSelected ? Colors.white : Colors.white70,
+          ),
         ),
       ),
     );
@@ -324,39 +646,17 @@ class _Ar3dViewScreenState extends State<Ar3dViewScreen> {
     required String tooltip,
     required VoidCallback onTap,
   }) {
-    return Tooltip(
-      message: tooltip,
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppColors.border),
-            boxShadow: const [
-              BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 1)),
-            ],
-          ),
-          child: Icon(icon, size: 20, color: AppColors.textPrimary),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.65),
+          shape: BoxShape.circle,
         ),
+        child: Icon(icon, color: Colors.white, size: 16),
       ),
-    );
-  }
-
-  Widget _buildSpecItem(String value, String label) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: AppTypography.cardTitle.copyWith(fontSize: 13, fontWeight: FontWeight.w700),
-        ),
-        Text(
-          label,
-          style: AppTypography.labelSmall.copyWith(fontSize: 10),
-        ),
-      ],
     );
   }
 }

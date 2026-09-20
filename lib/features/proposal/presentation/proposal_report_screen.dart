@@ -5,6 +5,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/progress_stepper.dart';
+import '../../../shared/widgets/bottom_nav_bar.dart';
 
 class ProposalReportScreen extends StatefulWidget {
   const ProposalReportScreen({super.key});
@@ -165,7 +166,7 @@ class _ProposalReportScreenState extends State<ProposalReportScreen> {
 
             // Navigation Buttons (< Previous, Next →)
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
               child: Row(
                 children: [
                   Expanded(
@@ -190,6 +191,16 @@ class _ProposalReportScreenState extends State<ProposalReportScreen> {
             ),
           ],
         ),
+      ),
+      bottomNavigationBar: BottomNavBar(
+        currentIndex: 2,
+        onTap: (index) {
+          if (index == 0) context.go('/home');
+          if (index == 1) context.go('/farms');
+          if (index == 2) context.go('/farm-location');
+          if (index == 3) context.go('/reports');
+          if (index == 4) context.go('/profile');
+        },
       ),
     );
   }

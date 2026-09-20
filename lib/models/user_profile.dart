@@ -18,4 +18,8 @@ class UserProfile {
     required this.totalAreaAcres,
     required this.designsCreated,
   });
+
+  /// Returns the first name only (e.g. "Shivam" from "Shivam Kumar")
+  String get firstName => name.split(' ').first;
 }
+

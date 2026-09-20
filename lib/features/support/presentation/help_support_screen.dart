@@ -2,21 +2,26 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
-import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/bottom_nav_bar.dart';
 
-class HelpSupportScreen extends StatelessWidget {
+class HelpSupportScreen extends StatefulWidget {
   const HelpSupportScreen({super.key});
+
+  @override
+  State<HelpSupportScreen> createState() => _HelpSupportScreenState();
+}
+
+class _HelpSupportScreenState extends State<HelpSupportScreen> {
+  final _expandedMap = <int, bool>{};
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: const Color(0xFFF4F7F4),
       appBar: AppBar(
-        title: Text(
-          'Help & Support',
-          style: AppTypography.screenHeading.copyWith(fontSize: 20),
-        ),
+        backgroundColor: const Color(0xFFF4F7F4),
+        elevation: 0,
+        title: Text('Help & Support', style: AppTypography.screenHeading.copyWith(fontSize: 20)),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
           onPressed: () => context.go('/profile'),
@@ -27,120 +32,126 @@ class HelpSupportScreen extends StatelessWidget {
           children: [
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                 children: [
-                  // Search Box
+                  // ── Search ──
                   Container(
-                    height: 46,
+                    height: 48,
                     decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.border),
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                      boxShadow: const [BoxShadow(color: Color(0x06000000), blurRadius: 6, offset: Offset(0, 2))],
                     ),
                     child: const TextField(
                       decoration: InputDecoration(
                         hintText: 'Search help articles...',
-                        prefixIcon: Icon(Icons.search_rounded, color: AppColors.textTertiary, size: 20),
+                        hintStyle: TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
+                        prefixIcon: Icon(Icons.search_rounded, color: Color(0xFF94A3B8), size: 20),
                         border: InputBorder.none,
                         enabledBorder: InputBorder.none,
                         focusedBorder: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(vertical: 10),
+                        contentPadding: EdgeInsets.symmetric(vertical: 12),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 18),
 
-                  // Categories
-                  AppCard(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Column(
-                      children: [
-                        _buildHelpCategory(
-                          icon: Icons.lightbulb_outline_rounded,
-                          title: 'Getting Started',
-                          subtitle: 'Creating your first farm & mapping boundary',
-                          onTap: () {},
-                        ),
-                        const Divider(height: 1, color: AppColors.borderLight),
-                        _buildHelpCategory(
-                          icon: Icons.touch_app_outlined,
-                          title: 'Using the App',
-                          subtitle: 'Configuring tilts, spacing & clearance checks',
-                          onTap: () {},
-                        ),
-                        const Divider(height: 1, color: AppColors.borderLight),
-                        _buildHelpCategory(
-                          icon: Icons.build_outlined,
-                          title: 'Technical Support',
-                          subtitle: 'Troubleshooting 3D canvas and report generation',
-                          onTap: () {},
-                        ),
-                        const Divider(height: 1, color: AppColors.borderLight),
-                        _buildHelpCategory(
-                          icon: Icons.question_answer_outlined,
-                          title: 'FAQs',
-                          subtitle: 'Common questions on subsidies and crop yields',
-                          onTap: () {},
-                        ),
-                      ],
-                    ),
+                  // ── Categories ──
+                  _sectionLabel('Browse Topics'),
+                  _expandableCategory(
+                    index: 0,
+                    icon: Icons.play_circle_outline_rounded,
+                    iconBg: const Color(0xFFE0F2FE),
+                    iconColor: const Color(0xFF0284C7),
+                    title: 'Getting Started',
+                    subtitle: 'Creating your first farm & mapping boundary',
+                    faqs: const [
+                      'How do I add a new farm?',
+                      'How to draw farm boundary on the map?',
+                      'What crop types are supported?',
+                    ],
                   ),
+                  _expandableCategory(
+                    index: 1,
+                    icon: Icons.touch_app_outlined,
+                    iconBg: const Color(0xFFF0FFF4),
+                    iconColor: AppColors.primary,
+                    title: 'Using the App',
+                    subtitle: 'Configuring tilts, spacing & clearance',
+                    faqs: const [
+                      'How to set solar panel tilt angle?',
+                      'How do I configure row spacing?',
+                      'What is the BCI score?',
+                    ],
+                  ),
+                  _expandableCategory(
+                    index: 2,
+                    icon: Icons.build_outlined,
+                    iconBg: const Color(0xFFFFF7ED),
+                    iconColor: const Color(0xFFEA580C),
+                    title: 'Technical Support',
+                    subtitle: 'Troubleshooting 3D canvas & report generation',
+                    faqs: const [
+                      '3D view is not rendering correctly',
+                      'PDF report is not generating',
+                      'The app crashes on AR mode',
+                    ],
+                  ),
+                  _expandableCategory(
+                    index: 3,
+                    icon: Icons.quiz_outlined,
+                    iconBg: const Color(0xFFF3E8FF),
+                    iconColor: const Color(0xFF7C3AED),
+                    title: 'FAQs',
+                    subtitle: 'Common questions on subsidies and yields',
+                    faqs: const [
+                      'Are there government subsidies for Agri-PV?',
+                      'How much crop yield reduction to expect?',
+                      'Can I integrate with existing solar systems?',
+                    ],
+                  ),
+
                   const SizedBox(height: 20),
-
-                  // Contact Support Options
-                  Text(
-                    'Contact Us',
-                    style: AppTypography.sectionHeading.copyWith(fontSize: 16),
-                  ),
-                  const SizedBox(height: 10),
+                  _sectionLabel('Contact Us'),
                   Row(
                     children: [
                       Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Opening support email client...')),
-                            );
-                          },
-                          icon: const Icon(Icons.email_outlined, size: 18),
-                          label: const Text('Email Support'),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        child: _contactButton(
+                          icon: Icons.email_outlined,
+                          label: 'Email Support',
+                          isPrimary: false,
+                          onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Opening support email...')),
                           ),
                         ),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Connecting to live chat advisor...')),
-                            );
-                          },
-                          icon: const Icon(Icons.chat_bubble_outline_rounded, size: 18),
-                          label: const Text('Live Chat'),
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        child: _contactButton(
+                          icon: Icons.chat_bubble_outline_rounded,
+                          label: 'Live Chat',
+                          isPrimary: true,
+                          onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Connecting to live chat...')),
                           ),
                         ),
                       ),
                     ],
                   ),
+                  const SizedBox(height: 20),
                 ],
               ),
             ),
 
-            // Bottom Navigation Bar
             BottomNavBar(
               currentIndex: 4,
-              onTap: (index) {
-                if (index == 0) context.go('/home');
-                if (index == 1) context.go('/farms');
-                if (index == 2) context.go('/agri-pv-design');
-                if (index == 3) context.go('/reports');
-                if (index == 4) context.go('/profile');
+              onTap: (i) {
+                if (i == 0) context.go('/home');
+                if (i == 1) context.go('/farms');
+                if (i == 2) context.go('/farm-location');
+                if (i == 3) context.go('/reports');
+                if (i == 4) context.go('/profile');
               },
             ),
           ],
@@ -149,32 +160,119 @@ class HelpSupportScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildHelpCategory({
+  Widget _sectionLabel(String text) => Padding(
+        padding: const EdgeInsets.only(bottom: 10, left: 2),
+        child: Text(text, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF64748B), letterSpacing: 0.5)),
+      );
+
+  Widget _expandableCategory({
+    required int index,
     required IconData icon,
+    required Color iconBg,
+    required Color iconColor,
     required String title,
     required String subtitle,
+    required List<String> faqs,
+  }) {
+    final expanded = _expandedMap[index] ?? false;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE8F5E9)),
+        boxShadow: const [BoxShadow(color: Color(0x06000000), blurRadius: 6, offset: Offset(0, 2))],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: Column(
+          children: [
+            InkWell(
+              onTap: () => setState(() => _expandedMap[index] = !expanded),
+              borderRadius: BorderRadius.circular(14),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(color: iconBg, borderRadius: BorderRadius.circular(10)),
+                      child: Icon(icon, color: iconColor, size: 20),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF0F172A))),
+                          Text(subtitle, style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
+                        ],
+                      ),
+                    ),
+                    Icon(
+                      expanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
+                      color: const Color(0xFF94A3B8),
+                      size: 22,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            if (expanded) ...[
+              const Divider(height: 1, color: Color(0xFFF1F5F9)),
+              ...faqs.map((faq) => Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.arrow_forward_ios_rounded, size: 11, color: AppColors.primary),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(faq, style: const TextStyle(fontSize: 13, color: Color(0xFF334155), fontWeight: FontWeight.w500)),
+                        ),
+                      ],
+                    ),
+                  )),
+              const SizedBox(height: 4),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _contactButton({
+    required IconData icon,
+    required String label,
+    required bool isPrimary,
     required VoidCallback onTap,
   }) {
-    return ListTile(
-      leading: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: AppColors.primarySurface,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Icon(icon, color: AppColors.primary, size: 20),
-      ),
-      title: Text(
-        title,
-        style: AppTypography.cardTitle.copyWith(fontSize: 14),
-      ),
-      subtitle: Text(
-        subtitle,
-        style: AppTypography.bodySmall.copyWith(fontSize: 11),
-      ),
-      trailing: const Icon(Icons.chevron_right_rounded, size: 20, color: AppColors.textTertiary),
+    return GestureDetector(
       onTap: onTap,
-      dense: true,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 13),
+        decoration: BoxDecoration(
+          color: isPrimary ? AppColors.primary : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: isPrimary ? AppColors.primary : const Color(0xFFE2E8F0)),
+          boxShadow: const [BoxShadow(color: Color(0x08000000), blurRadius: 6, offset: Offset(0, 2))],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 18, color: isPrimary ? Colors.white : AppColors.primary),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w700,
+                color: isPrimary ? Colors.white : AppColors.primary,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -19,6 +19,7 @@ class Farm {
   final double gridProximityKm;
   final String currentLandUse;
   final List<String> coordinates;
+  final String imagePath;
 
   const Farm({
     required this.id,
@@ -35,6 +36,7 @@ class Farm {
     this.gridProximityKm = 2.4,
     this.currentLandUse = 'Agriculture',
     this.coordinates = const [],
+    this.imagePath = 'assets/images/farm_wheat.jpg',
   });
 
   String get suitabilityLabel {

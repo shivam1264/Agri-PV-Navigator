@@ -31,17 +31,34 @@ class _FarmLocationScreenState extends State<FarmLocationScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF0F172A)),
+          onPressed: () => context.go('/home'),
+        ),
+        title: const Text(
+          'Farm Location',
+          style: TextStyle(
+            color: Color(0xFF0F172A),
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+            fontFamily: 'Inter',
+          ),
+        ),
+        centerTitle: true,
+      ),
       body: SafeArea(
         child: Column(
           children: [
-            // 5-Step Progress Stepper (Step 1: Location)
+            // Progress Stepper (Step 1: Location)
             ProgressStepper(
               currentStep: 1,
               onStepTapped: (step) {
                 if (step == 2) context.go('/farm-details');
                 if (step == 3) context.go('/site-suitability');
                 if (step == 4) context.go('/agri-pv-design');
-                if (step == 5) context.go('/proposal-report');
               },
             ),
 
@@ -300,11 +317,11 @@ class _FarmLocationScreenState extends State<FarmLocationScreen> {
 
             // Bottom Navigation Bar
             BottomNavBar(
-              currentIndex: 1,
+              currentIndex: 2,
               onTap: (index) {
                 if (index == 0) context.go('/home');
                 if (index == 1) context.go('/farms');
-                if (index == 2) context.go('/agri-pv-design');
+                if (index == 2) context.go('/farm-location');
                 if (index == 3) context.go('/reports');
                 if (index == 4) context.go('/profile');
               },

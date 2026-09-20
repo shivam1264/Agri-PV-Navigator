@@ -108,7 +108,7 @@ class AboutScreen extends StatelessWidget {
               onTap: (index) {
                 if (index == 0) context.go('/home');
                 if (index == 1) context.go('/farms');
-                if (index == 2) context.go('/agri-pv-design');
+                if (index == 2) context.go('/farm-location');
                 if (index == 3) context.go('/reports');
                 if (index == 4) context.go('/profile');
               },

@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/splash/presentation/splash_screen.dart';
 import '../../features/onboarding/presentation/onboarding_screen.dart';
@@ -22,96 +23,114 @@ import '../../features/support/presentation/help_support_screen.dart';
 import '../../features/support/presentation/about_screen.dart';
 import '../../features/success/presentation/success_screen.dart';
 
+Page<dynamic> _buildFadePage(BuildContext context, GoRouterState state, Widget child) {
+  return CustomTransitionPage<void>(
+    key: state.pageKey,
+    child: child,
+    transitionDuration: const Duration(milliseconds: 180),
+    reverseTransitionDuration: const Duration(milliseconds: 180),
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      return FadeTransition(
+        opacity: CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeInOut,
+        ),
+        child: child,
+      );
+    },
+  );
+}
+
 final GoRouter appRouter = GoRouter(
   initialLocation: '/',
   routes: [
     GoRoute(
       path: '/',
-      builder: (context, state) => const SplashScreen(),
+      pageBuilder: (context, state) => _buildFadePage(context, state, const SplashScreen()),
     ),
     GoRoute(
       path: '/onboarding',
-      builder: (context, state) => const OnboardingScreen(),
+      pageBuilder: (context, state) => _buildFadePage(context, state, const OnboardingScreen()),
     ),
     GoRoute(
       path: '/login',
-      builder: (context, state) => const LoginScreen(),
+      pageBuilder: (context, state) => _buildFadePage(context, state, const LoginScreen()),
     ),
     GoRoute(
       path: '/home',
-      builder: (context, state) => const HomeScreen(),
+      pageBuilder: (context, state) => _buildFadePage(context, state, const HomeScreen()),
     ),
     GoRoute(
       path: '/farms',
-      builder: (context, state) => const MyFarmsScreen(),
+      pageBuilder: (context, state) => _buildFadePage(context, state, const MyFarmsScreen()),
     ),
     GoRoute(
       path: '/farm-detail',
-      builder: (context, state) => const FarmDetailScreen(),
+      pageBuilder: (context, state) => _buildFadePage(context, state, const FarmDetailScreen()),
     ),
     GoRoute(
       path: '/farm-location',
-      builder: (context, state) => const FarmLocationScreen(),
+      pageBuilder: (context, state) => _buildFadePage(context, state, const FarmLocationScreen()),
     ),
     GoRoute(
       path: '/farm-details',
-      builder: (context, state) => const FarmDetailsScreen(),
+      pageBuilder: (context, state) => _buildFadePage(context, state, const FarmDetailsScreen()),
     ),
     GoRoute(
       path: '/site-suitability',
-      builder: (context, state) => const SiteSuitabilityScreen(),
+      pageBuilder: (context, state) => _buildFadePage(context, state, const SiteSuitabilityScreen()),
     ),
     GoRoute(
       path: '/suitability-details',
-      builder: (context, state) => const SuitabilityDetailsScreen(),
+      pageBuilder: (context, state) => _buildFadePage(context, state, const SuitabilityDetailsScreen()),
     ),
     GoRoute(
       path: '/agri-pv-design',
-      builder: (context, state) => const AgriPvSystemDesignScreen(),
+      pageBuilder: (context, state) => _buildFadePage(context, state, const AgriPvSystemDesignScreen()),
     ),
     GoRoute(
       path: '/ar-3d-view',
-      builder: (context, state) => const Ar3dViewScreen(),
+      pageBuilder: (context, state) => _buildFadePage(context, state, const Ar3dViewScreen()),
     ),
     GoRoute(
       path: '/shadow-simulation',
-      builder: (context, state) => const ShadowSimulationScreen(),
+      pageBuilder: (context, state) => _buildFadePage(context, state, const ShadowSimulationScreen()),
     ),
     GoRoute(
       path: '/compare-designs',
-      builder: (context, state) => const CompareDesignsScreen(),
+      pageBuilder: (context, state) => _buildFadePage(context, state, const CompareDesignsScreen()),
     ),
     GoRoute(
       path: '/techno-economic',
-      builder: (context, state) => const TechnoEconomicScreen(),
+      pageBuilder: (context, state) => _buildFadePage(context, state, const TechnoEconomicScreen()),
     ),
     GoRoute(
       path: '/proposal-report',
-      builder: (context, state) => const ProposalReportScreen(),
+      pageBuilder: (context, state) => _buildFadePage(context, state, const ProposalReportScreen()),
     ),
     GoRoute(
       path: '/reports',
-      builder: (context, state) => const ReportsScreen(),
+      pageBuilder: (context, state) => _buildFadePage(context, state, const ReportsScreen()),
     ),
     GoRoute(
       path: '/profile',
-      builder: (context, state) => const ProfileScreen(),
+      pageBuilder: (context, state) => _buildFadePage(context, state, const ProfileScreen()),
     ),
     GoRoute(
       path: '/settings',
-      builder: (context, state) => const SettingsScreen(),
+      pageBuilder: (context, state) => _buildFadePage(context, state, const SettingsScreen()),
     ),
     GoRoute(
       path: '/help-support',
-      builder: (context, state) => const HelpSupportScreen(),
+      pageBuilder: (context, state) => _buildFadePage(context, state, const HelpSupportScreen()),
     ),
     GoRoute(
       path: '/about',
-      builder: (context, state) => const AboutScreen(),
+      pageBuilder: (context, state) => _buildFadePage(context, state, const AboutScreen()),
     ),
     GoRoute(
       path: '/success',
-      builder: (context, state) => const SuccessScreen(),
+      pageBuilder: (context, state) => _buildFadePage(context, state, const SuccessScreen()),
     ),
   ],
 );

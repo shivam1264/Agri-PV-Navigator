@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
-import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/bottom_nav_bar.dart';
 import '../../../services/storage/mock_data_service.dart';
 
@@ -14,41 +13,60 @@ class ProfileScreen extends StatelessWidget {
     final user = MockDataService().user;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: const Color(0xFFF4F7F4),
       appBar: AppBar(
-        title: Text(
-          'Profile',
-          style: AppTypography.screenHeading.copyWith(fontSize: 20),
-        ),
+        backgroundColor: const Color(0xFFF4F7F4),
+        elevation: 0,
+        title: Text('Profile', style: AppTypography.screenHeading.copyWith(fontSize: 20)),
+        automaticallyImplyLeading: false,
       ),
       body: SafeArea(
         child: Column(
           children: [
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
+                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
                 child: Column(
                   children: [
-                    // Profile Header Card
-                    AppCard(
-                      padding: const EdgeInsets.all(20),
+                    // ── Profile Header ──
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: const Color(0xFFE8F5E9)),
+                        boxShadow: const [BoxShadow(color: Color(0x08000000), blurRadius: 8, offset: Offset(0, 2))],
+                      ),
                       child: Column(
                         children: [
+                          // Avatar
                           Container(
-                            width: 72,
-                            height: 72,
+                            width: 76,
+                            height: 76,
                             decoration: BoxDecoration(
-                              color: AppColors.primarySurface,
                               shape: BoxShape.circle,
-                              border: Border.all(color: AppColors.primaryLight, width: 2),
+                              border: Border.all(color: const Color(0xFF22C55E), width: 2.5),
+                              boxShadow: const [
+                                BoxShadow(color: Color(0x18000000), blurRadius: 8, offset: Offset(0, 3)),
+                              ],
                             ),
-                            child: Center(
-                              child: Text(
-                                user.initials,
-                                style: const TextStyle(
-                                  fontSize: 26,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.primaryDark,
+                            child: ClipOval(
+                              child: Image.asset(
+                                'assets/images/farmer_avatar.jpg',
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) => Container(
+                                  color: const Color(0xFF166534),
+                                  child: Center(
+                                    child: Text(
+                                      user.initials,
+                                      style: const TextStyle(
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.w800,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
@@ -56,88 +74,63 @@ class ProfileScreen extends StatelessWidget {
                           const SizedBox(height: 12),
                           Text(
                             user.name,
-                            style: AppTypography.screenHeading.copyWith(fontSize: 20),
+                            style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
                           ),
-                          const SizedBox(height: 2),
+                          const SizedBox(height: 3),
                           Text(
                             user.email,
-                            style: AppTypography.bodySmall,
+                            style: const TextStyle(fontSize: 13, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
                           ),
-                          const SizedBox(height: 16),
-                          // Stats banner inside profile
+                          const SizedBox(height: 18),
+                          // Stats
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceAround,
                             children: [
-                              _buildProfileStat('${user.totalFarms}', 'Farms'),
-                              Container(height: 24, width: 1, color: AppColors.border),
-                              _buildProfileStat('${user.totalAreaAcres} ac', 'Total Area'),
-                              Container(height: 24, width: 1, color: AppColors.border),
-                              _buildProfileStat('${user.designsCreated}', 'Designs'),
+                              _profileStat('${user.totalFarms}', 'Farms'),
+                              Container(height: 28, width: 1, color: const Color(0xFFE2E8F0)),
+                              _profileStat('${user.totalAreaAcres} ac', 'Total Area'),
+                              Container(height: 28, width: 1, color: const Color(0xFFE2E8F0)),
+                              _profileStat('${user.designsCreated}', 'Designs'),
                             ],
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
 
-                    // Menu Options
-                    AppCard(
-                      padding: const EdgeInsets.symmetric(vertical: 6),
-                      child: Column(
-                        children: [
-                          _buildMenuItem(
-                            icon: Icons.person_outline_rounded,
-                            title: 'My Profile',
-                            onTap: () {},
-                          ),
-                          const Divider(height: 1, color: AppColors.borderLight),
-                          _buildMenuItem(
-                            icon: Icons.agriculture_outlined,
-                            title: 'My Farms',
-                            onTap: () => context.go('/farms'),
-                          ),
-                          const Divider(height: 1, color: AppColors.borderLight),
-                          _buildMenuItem(
-                            icon: Icons.settings_outlined,
-                            title: 'App Settings',
-                            onTap: () => context.go('/settings'),
-                          ),
-                          const Divider(height: 1, color: AppColors.borderLight),
-                          _buildMenuItem(
-                            icon: Icons.help_outline_rounded,
-                            title: 'Help & Support',
-                            onTap: () => context.go('/help-support'),
-                          ),
-                          const Divider(height: 1, color: AppColors.borderLight),
-                          _buildMenuItem(
-                            icon: Icons.info_outline_rounded,
-                            title: 'About',
-                            onTap: () => context.go('/about'),
-                          ),
-                          const Divider(height: 1, color: AppColors.borderLight),
-                          _buildMenuItem(
-                            icon: Icons.logout_rounded,
-                            title: 'Logout',
-                            isDestructive: true,
-                            onTap: () => context.go('/login'),
-                          ),
-                        ],
+                    // ── Menu Card ──
+                    _menuSection([
+                      _MenuItem(icon: Icons.person_outline_rounded, label: 'My Profile', onTap: () {}),
+                      _MenuItem(icon: Icons.agriculture_outlined, label: 'My Farms', onTap: () => context.go('/farms')),
+                      _MenuItem(icon: Icons.settings_outlined, label: 'App Settings', onTap: () => context.go('/settings')),
+                      _MenuItem(icon: Icons.help_outline_rounded, label: 'Help & Support', onTap: () => context.go('/help-support')),
+                      _MenuItem(icon: Icons.info_outline_rounded, label: 'About', onTap: () => context.go('/about')),
+                    ]),
+                    const SizedBox(height: 14),
+
+                    // ── Logout Card ──
+                    _menuSection([
+                      _MenuItem(
+                        icon: Icons.logout_rounded,
+                        label: 'Logout',
+                        isDestructive: true,
+                        onTap: () => context.go('/login'),
                       ),
-                    ),
+                    ]),
                     const SizedBox(height: 20),
                   ],
                 ),
               ),
             ),
 
-            // Bottom Navigation Bar
             BottomNavBar(
               currentIndex: 4,
-              onTap: (index) {
-                if (index == 0) context.go('/home');
-                if (index == 1) context.go('/farms');
-                if (index == 2) context.go('/agri-pv-design');
-                if (index == 3) context.go('/reports');
+              onTap: (i) {
+                if (i == 0) context.go('/home');
+                if (i == 1) context.go('/farms');
+                if (i == 2) context.go('/farm-location');
+                if (i == 3) context.go('/reports');
+                if (i == 4) context.go('/profile');
               },
             ),
           ],
@@ -146,46 +139,80 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildProfileStat(String val, String title) {
-    return Column(
-      children: [
-        Text(
-          val,
-          style: AppTypography.cardTitle.copyWith(fontWeight: FontWeight.w700, fontSize: 15),
-        ),
-        Text(
-          title,
-          style: AppTypography.labelSmall.copyWith(fontSize: 11),
-        ),
-      ],
+  Widget _profileStat(String val, String label) => Column(
+        children: [
+          Text(val, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF0F172A))),
+          Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+        ],
+      );
+
+  Widget _menuSection(List<_MenuItem> items) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE8F5E9)),
+        boxShadow: const [BoxShadow(color: Color(0x06000000), blurRadius: 6, offset: Offset(0, 2))],
+      ),
+      child: Column(
+        children: [
+          for (int i = 0; i < items.length; i++) ...[
+            if (i > 0) const Divider(height: 1, color: Color(0xFFF1F5F9), indent: 56),
+            items[i],
+          ],
+        ],
+      ),
     );
   }
+}
 
-  Widget _buildMenuItem({
-    required IconData icon,
-    required String title,
-    required VoidCallback onTap,
-    bool isDestructive = false,
-  }) {
-    return ListTile(
-      leading: Icon(
-        icon,
-        color: isDestructive ? AppColors.error : AppColors.textPrimary,
-        size: 20,
-      ),
-      title: Text(
-        title,
-        style: AppTypography.cardTitle.copyWith(
-          fontSize: 14,
-          fontWeight: isDestructive ? FontWeight.w600 : FontWeight.w500,
-          color: isDestructive ? AppColors.error : AppColors.textPrimary,
+class _MenuItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool isDestructive;
+
+  const _MenuItem({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.isDestructive = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = isDestructive ? const Color(0xFFEF4444) : const Color(0xFF1E293B);
+    final iconBg = isDestructive ? const Color(0xFFFEF2F2) : const Color(0xFFF0FFF4);
+    final iconColor = isDestructive ? const Color(0xFFEF4444) : AppColors.primary;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(color: iconBg, borderRadius: BorderRadius.circular(10)),
+                child: Icon(icon, color: iconColor, size: 18),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600, color: color),
+                ),
+              ),
+              if (!isDestructive)
+                const Icon(Icons.chevron_right_rounded, size: 20, color: Color(0xFFCBD5E1)),
+            ],
+          ),
         ),
       ),
-      trailing: isDestructive
-          ? null
-          : const Icon(Icons.chevron_right_rounded, size: 20, color: AppColors.textTertiary),
-      onTap: onTap,
-      dense: true,
     );
   }
 }

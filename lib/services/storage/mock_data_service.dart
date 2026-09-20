@@ -40,6 +40,7 @@ class MockDataService {
       slope: '1.8% (Almost flat)',
       irrigation: 'Available',
       gridProximityKm: 2.4,
+      imagePath: 'assets/images/farm_wheat.jpg',
     ),
     const Farm(
       id: 'farm_02',
@@ -54,12 +55,13 @@ class MockDataService {
       slope: '2.1%',
       irrigation: 'Available',
       gridProximityKm: 4.1,
+      imagePath: 'assets/images/farm_rice.jpg',
     ),
     const Farm(
       id: 'farm_03',
       name: 'Farm C',
       areaAcres: 4.10,
-      crop: 'Potato',
+      crop: 'Mustard',
       location: 'Kaushambi',
       state: 'Uttar Pradesh, India',
       suitabilityScore: 88,
@@ -68,6 +70,22 @@ class MockDataService {
       slope: '1.2%',
       irrigation: 'Available',
       gridProximityKm: 1.8,
+      imagePath: 'assets/images/farm_mustard.jpg',
+    ),
+    const Farm(
+      id: 'farm_04',
+      name: 'Farm D',
+      areaAcres: 3.20,
+      crop: 'Vegetables',
+      location: 'Naini, Prayagraj',
+      state: 'Uttar Pradesh, India',
+      suitabilityScore: 85,
+      status: FarmStatus.active,
+      soilType: 'Loamy',
+      slope: '1.5%',
+      irrigation: 'Drip Irrigation',
+      gridProximityKm: 1.5,
+      imagePath: 'assets/images/farm_vegetables.jpg',
     ),
   ];
 
@@ -85,6 +103,7 @@ class MockDataService {
     slope: '< 2% (Almost flat)',
     irrigation: 'Available',
     gridProximityKm: 2.4,
+    imagePath: 'assets/images/farm_wheat.jpg',
   );
 
   // Site assessment for Farm A (matching Screens 8 & 9)

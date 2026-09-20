@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
-        android:label="agri_pv_navigator"
+        android:label="Agri-PV Navigator"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

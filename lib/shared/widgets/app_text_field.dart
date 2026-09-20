@@ -1,0 +1,63 @@
+import 'package:flutter/material.dart';
+import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_typography.dart';
+
+class AppTextField extends StatelessWidget {
+  final String label;
+  final String? hint;
+  final TextEditingController? controller;
+  final IconData? prefixIcon;
+  final Widget? suffix;
+  final bool obscureText;
+  final TextInputType keyboardType;
+  final String? Function(String?)? validator;
+  final void Function(String)? onChanged;
+  final bool readOnly;
+
+  const AppTextField({
+    super.key,
+    required this.label,
+    this.hint,
+    this.controller,
+    this.prefixIcon,
+    this.suffix,
+    this.obscureText = false,
+    this.keyboardType = TextInputType.text,
+    this.validator,
+    this.onChanged,
+    this.readOnly = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: AppTypography.label.copyWith(
+            fontWeight: FontWeight.w600,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 6),
+        TextFormField(
+          controller: controller,
+          obscureText: obscureText,
+          keyboardType: keyboardType,
+          validator: validator,
+          onChanged: onChanged,
+          readOnly: readOnly,
+          style: AppTypography.bodyLarge,
+          decoration: InputDecoration(
+            hintText: hint,
+            prefixIcon: prefixIcon != null
+                ? Icon(prefixIcon, color: AppColors.textSecondary, size: 20)
+                : null,
+            suffixIcon: suffix,
+          ),
+        ),
+      ],
+    );
+  }
+}

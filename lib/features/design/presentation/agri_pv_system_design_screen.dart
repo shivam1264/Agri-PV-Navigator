@@ -1,0 +1,361 @@
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_typography.dart';
+import '../../../shared/widgets/app_button.dart';
+import '../../../shared/widgets/app_card.dart';
+import '../../../shared/widgets/progress_stepper.dart';
+import '../../../shared/widgets/clearance_badge.dart';
+import '../../../shared/widgets/bottom_nav_bar.dart';
+import '../../../services/calculation/agri_pv_calculation_service.dart';
+import '../../../models/agri_pv_design.dart';
+
+class AgriPvSystemDesignScreen extends StatefulWidget {
+  const AgriPvSystemDesignScreen({super.key});
+
+  @override
+  State<AgriPvSystemDesignScreen> createState() => _AgriPvSystemDesignScreenState();
+}
+
+class _AgriPvSystemDesignScreenState extends State<AgriPvSystemDesignScreen> {
+  MountingType _mountingType = MountingType.elevated;
+  double _tiltDegrees = 20.0;
+  PanelOrientation _orientation = PanelOrientation.south;
+  double _rowSpacingMeters = 6.0;
+  double _panelCoveragePercent = 40.0;
+
+  @override
+  Widget build(BuildContext context) {
+    // Live calculation via pure AgriPvCalculationService
+    final design = AgriPvCalculationService.generateDesign(
+      id: 'custom_config',
+      name: 'Custom System',
+      areaAcres: 2.35,
+      crop: 'Wheat',
+      mountingType: _mountingType,
+      tiltDegrees: _tiltDegrees,
+      orientation: _orientation,
+      rowSpacingMeters: _rowSpacingMeters,
+      panelCoveragePercent: _panelCoveragePercent,
+    );
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Progress Stepper (Step 4: Design)
+            ProgressStepper(
+              currentStep: 4,
+              onStepTapped: (step) {
+                if (step == 1) context.go('/farm-location');
+                if (step == 2) context.go('/farm-details');
+                if (step == 3) context.go('/site-suitability');
+                if (step == 5) context.go('/proposal-report');
+              },
+            ),
+
+            // Main Scrollable Area
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 14.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Configure Your Agri-PV System',
+                      style: AppTypography.screenHeading.copyWith(fontSize: 20),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Adjust mounting structure, spacing, and tilt to balance solar generation with crop yield.',
+                      style: AppTypography.bodySmall,
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Mounting Type Selection Chips
+                    Text(
+                      'Mounting Type',
+                      style: AppTypography.label.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: MountingType.values.map((type) {
+                        final isSelected = _mountingType == type;
+                        return Expanded(
+                          child: GestureDetector(
+                            onTap: () => setState(() => _mountingType = type),
+                            child: Container(
+                              margin: const EdgeInsets.symmetric(horizontal: 3),
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              decoration: BoxDecoration(
+                                color: isSelected ? AppColors.primary : AppColors.surface,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: isSelected ? AppColors.primary : AppColors.border,
+                                  width: 1.2,
+                                ),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  type.label,
+                                  style: AppTypography.labelSmall.copyWith(
+                                    fontSize: 11,
+                                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                    color: isSelected ? Colors.white : AppColors.textPrimary,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Live Calculated Output Metrics Bar (4 Stats)
+                    AppCard(
+                      padding: const EdgeInsets.all(14),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          _buildMetricColumn('${design.pvCapacityKw.toInt()} kW', 'PV Capacity'),
+                          Container(height: 28, width: 1, color: AppColors.border),
+                          _buildMetricColumn('${design.annualEnergyMwh.toInt()} MWh', 'Est. Energy'),
+                          Container(height: 28, width: 1, color: AppColors.border),
+                          _buildMetricColumn('${design.cultivableAreaPercent.toInt()}%', 'Cultivable'),
+                          Container(height: 28, width: 1, color: AppColors.border),
+                          _buildMetricColumn('${design.cropYieldPercent.toInt()}%', 'Crop Yield'),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Sliders Container
+                    AppCard(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Panel Tilt Slider
+                          _buildSliderRow(
+                            label: 'Panel Tilt',
+                            valueStr: '${_tiltDegrees.toInt()}°',
+                            value: _tiltDegrees,
+                            min: 10,
+                            max: 40,
+                            onChanged: (val) => setState(() => _tiltDegrees = val),
+                          ),
+                          const Divider(height: 22, color: AppColors.borderLight),
+
+                          // Row Spacing Slider
+                          _buildSliderRow(
+                            label: 'Row Spacing',
+                            valueStr: '${_rowSpacingMeters.toStringAsFixed(1)} m',
+                            value: _rowSpacingMeters,
+                            min: 4.0,
+                            max: 12.0,
+                            onChanged: (val) => setState(() => _rowSpacingMeters = val),
+                          ),
+                          const Divider(height: 22, color: AppColors.borderLight),
+
+                          // Panel Coverage Slider
+                          _buildSliderRow(
+                            label: 'Panel Coverage',
+                            valueStr: '${_panelCoveragePercent.toInt()}%',
+                            value: _panelCoveragePercent,
+                            min: 20,
+                            max: 70,
+                            onChanged: (val) => setState(() => _panelCoveragePercent = val),
+                          ),
+                          const Divider(height: 22, color: AppColors.borderLight),
+
+                          // Orientation Selector
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Orientation',
+                                style: AppTypography.label.copyWith(fontWeight: FontWeight.w600),
+                              ),
+                              DropdownButton<PanelOrientation>(
+                                value: _orientation,
+                                underline: const SizedBox(),
+                                style: AppTypography.bodySmall.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.primary,
+                                ),
+                                icon: const Icon(Icons.arrow_drop_down, color: AppColors.primary),
+                                items: PanelOrientation.values.map((o) => DropdownMenuItem(
+                                  value: o,
+                                  child: Text(o.label),
+                                )).toList(),
+                                onChanged: (val) {
+                                  if (val != null) setState(() => _orientation = val);
+                                },
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Machinery Clearance Check Banner
+                    ClearanceBadge(
+                      isCompatible: design.isMachineryCompatible,
+                      details: design.clearanceStatus,
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Visual Exploration Quick Links (3D/AR View & Shadow Simulation)
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () => context.go('/ar-3d-view'),
+                            icon: const Icon(Icons.view_in_ar_rounded, size: 18),
+                            label: const Text('View in 3D / AR'),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () => context.go('/shadow-simulation'),
+                            icon: const Icon(Icons.wb_sunny_outlined, size: 18),
+                            label: const Text('Shadow Sim'),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Center(
+                      child: TextButton.icon(
+                        onPressed: () => context.go('/compare-designs'),
+                        icon: const Icon(Icons.compare_arrows_rounded, size: 18),
+                        label: const Text('Compare with other designs'),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                ),
+              ),
+            ),
+
+            // Navigation Buttons (< Previous, Next →)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: AppButton(
+                      text: '‹ Previous',
+                      variant: AppButtonVariant.outline,
+                      onPressed: () => context.go('/suitability-details'),
+                      height: 46,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: AppButton(
+                      text: 'Next ›',
+                      variant: AppButtonVariant.primary,
+                      onPressed: () => context.go('/ar-3d-view'),
+                      height: 46,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMetricColumn(String val, String title) {
+    return Expanded(
+      child: Column(
+        children: [
+          Text(
+            val,
+            style: AppTypography.cardTitle.copyWith(
+              fontWeight: FontWeight.w800,
+              color: AppColors.primary,
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            title,
+            style: AppTypography.labelSmall.copyWith(fontSize: 10),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSliderRow({
+    required String label,
+    required String valueStr,
+    required double value,
+    required double min,
+    required double max,
+    required void Function(double) onChanged,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              label,
+              style: AppTypography.label.copyWith(fontWeight: FontWeight.w600),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: AppColors.primarySurface,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                valueStr,
+                style: AppTypography.labelSmall.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primaryDark,
+                ),
+              ),
+            ),
+          ],
+        ),
+        SliderTheme(
+          data: SliderTheme.of(context).copyWith(
+            activeTrackColor: AppColors.primary,
+            inactiveTrackColor: AppColors.borderLight,
+            thumbColor: AppColors.primary,
+            overlayColor: AppColors.primarySurface,
+            trackHeight: 4.0,
+            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
+          ),
+          child: Slider(
+            value: value,
+            min: min,
+            max: max,
+            onChanged: onChanged,
+          ),
+        ),
+      ],
+    );
+  }
+}

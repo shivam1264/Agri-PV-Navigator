@@ -5,11 +5,13 @@ import '../../models/farm.dart';
 class FarmCard extends StatelessWidget {
   final Farm farm;
   final VoidCallback onTap;
+  final VoidCallback? onDelete;
 
   const FarmCard({
     super.key,
     required this.farm,
     required this.onTap,
+    this.onDelete,
   });
 
   @override
@@ -152,6 +154,8 @@ class FarmCard extends StatelessWidget {
                                 fontWeight: FontWeight.w800,
                                 color: isDark ? Colors.white : const Color(0xFF0F172A),
                               ),
+                              maxLines: 2,
+                              softWrap: true,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
@@ -172,6 +176,25 @@ class FarmCard extends StatelessWidget {
                               ),
                             ),
                           ),
+                          if (onDelete != null) ...[
+                            const SizedBox(width: 6),
+                            GestureDetector(
+                              onTap: onDelete,
+                              behavior: HitTestBehavior.opaque,
+                              child: Container(
+                                padding: const EdgeInsets.all(5),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFEF4444).withValues(alpha: isDark ? 0.18 : 0.08),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Icon(
+                                  Icons.delete_outline_rounded,
+                                  size: 16,
+                                  color: Color(0xFFEF4444),
+                                ),
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                       const SizedBox(height: 5),
@@ -196,26 +219,40 @@ class FarmCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 3),
                       // Location
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.location_on_outlined,
-                            size: 13,
-                            color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
-                          ),
-                          const SizedBox(width: 3),
-                          Expanded(
-                            child: Text(
-                              farm.location,
-                              style: TextStyle(
-                                color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                                fontSize: 11,
-                                fontWeight: FontWeight.w500,
+                      Builder(
+                        builder: (context) {
+                          String displayLoc = farm.location.trim();
+                          if ((displayLoc.isEmpty || displayLoc.toLowerCase().contains('prayagraj')) &&
+                              farm.name.toLowerCase().startsWith('farm at ')) {
+                            final extracted = farm.name.substring(8).trim();
+                            if (extracted.isNotEmpty && !extracted.toLowerCase().contains('prayagraj')) {
+                              displayLoc = extracted;
+                            }
+                          }
+                          if (displayLoc.isEmpty) displayLoc = 'Farm Site';
+
+                          return Row(
+                            children: [
+                              Icon(
+                                Icons.location_on_outlined,
+                                size: 13,
+                                color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
                               ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
+                              const SizedBox(width: 3),
+                              Expanded(
+                                child: Text(
+                                  displayLoc,
+                                  style: TextStyle(
+                                    color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          );
+                        },
                       ),
                     ],
                   ),

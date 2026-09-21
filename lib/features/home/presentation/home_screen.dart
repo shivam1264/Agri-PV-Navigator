@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../shared/widgets/farm_card.dart';
-import '../../../shared/widgets/bottom_nav_bar.dart';
 import '../../../shared/widgets/app_logo.dart';
+import '../../../shared/widgets/bottom_nav_bar.dart';
+import '../../../shared/widgets/farm_card.dart';
+import '../../../shared/widgets/user_avatar.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/farm_provider.dart';
@@ -19,6 +21,8 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  DateTime? _lastBackPressTime;
+
   @override
   void initState() {
     super.initState();
@@ -55,9 +59,27 @@ class _HomeScreenState extends State<HomeScreen> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      body: SafeArea(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        final now = DateTime.now();
+        if (_lastBackPressTime == null || now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
+          _lastBackPressTime = now;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Press back again to exit app'),
+              duration: Duration(seconds: 2),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        } else {
+          SystemNavigator.pop();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: theme.scaffoldBackgroundColor,
+        body: SafeArea(
         child: Column(
           children: [
             // ── Top App Bar ──
@@ -79,38 +101,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(width: 10),
                   // User Avatar
-                  GestureDetector(
+                  UserAvatar(
+                    profileImage: user.profileImage,
+                    initials: user.initials,
+                    size: 36,
+                    borderWidth: 1.5,
                     onTap: () => context.go('/profile'),
-                    child: Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: const Color(0xFF22C55E), width: 1.5),
-                        boxShadow: const [
-                          BoxShadow(color: Color(0x10000000), blurRadius: 4, offset: Offset(0, 1)),
-                        ],
-                      ),
-                      child: ClipOval(
-                        child: Image.asset(
-                          'assets/images/farmer_avatar.jpg',
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => Container(
-                            color: AppColors.primarySurface,
-                            child: Center(
-                              child: Text(
-                                user.initials,
-                                style: const TextStyle(
-                                  color: Color(0xFF166534),
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
                   ),
                 ],
               ),
@@ -359,7 +355,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             farm: farm,
                             onTap: () {
                               farmProv.selectFarm(farm);
-                              context.go('/farm-detail');
+                              context.push('/farm-detail');
                             },
                           )),
                     const SizedBox(height: 16),
@@ -430,6 +426,7 @@ class _HomeScreenState extends State<HomeScreen> {
           }
         },
       ),
+    ),
     );
   }
 }

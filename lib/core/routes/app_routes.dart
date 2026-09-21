@@ -15,6 +15,8 @@ import '../../features/visualization/presentation/shadow_simulation_screen.dart'
 import '../../features/economics/presentation/techno_economic_screen.dart';
 import '../../features/proposal/presentation/proposal_report_screen.dart';
 import '../../features/reports/presentation/reports_screen.dart';
+import '../../features/reports/presentation/report_detail_screen.dart';
+import '../../models/proposal_report.dart';
 import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/settings/presentation/settings_screen.dart';
 import '../../features/support/presentation/help_support_screen.dart';
@@ -101,6 +103,14 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/reports',
       pageBuilder: (context, state) => _buildFadePage(context, state, const ReportsScreen()),
+    ),
+    GoRoute(
+      path: '/report-detail',
+      pageBuilder: (context, state) => _buildFadePage(
+        context,
+        state,
+        ReportDetailScreen(report: state.extra as ProposalReport?),
+      ),
     ),
     GoRoute(
       path: '/profile',

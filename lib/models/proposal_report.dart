@@ -54,7 +54,7 @@ class ProposalReport {
               : DateTime.now()),
       type: parseType(rawType?.toString()),
       fileSize: data['fileSize'] ?? '1.2 MB',
-      downloadUrl: data['downloadUrl'] ?? '',
+      downloadUrl: data['downloadUrl'] ?? data['fileUrl'] ?? '',
     );
   }
 

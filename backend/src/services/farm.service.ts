@@ -39,11 +39,21 @@ export class FarmService {
       longitude: lng,
     });
 
+    const farmName = (data.name || '').trim();
+    let locName = (data.locationName || data.district || '').trim();
+    if ((!locName || locName.toLowerCase().includes('prayagraj')) && farmName.toLowerCase().startsWith('farm at ')) {
+      const extracted = farmName.substring(8).trim();
+      if (extracted.length > 0 && !extracted.toLowerCase().includes('prayagraj')) {
+        locName = extracted;
+      }
+    }
+    if (!locName) locName = 'Farm Site';
+
     const farm = new Farm({
       userId: new mongoose.Types.ObjectId(userId),
-      name: data.name,
-      locationName: data.locationName || data.district || 'Phulpur, Prayagraj',
-      state: data.state || 'Uttar Pradesh, India',
+      name: farmName || `Farm at ${locName}`,
+      locationName: locName,
+      state: data.state || 'India',
       areaAcres: data.areaAcres,
       cropType: data.cropType || 'Wheat',
       soilType: data.soilType || 'Loamy',

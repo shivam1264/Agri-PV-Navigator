@@ -51,16 +51,6 @@ android {
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
-
-    packaging {
-        jniLibs {
-            keepDebugSymbols.add("**/*.so")
-        }
-    }
-}
-
-tasks.matching { it.name.contains("StripDebugSymbols") }.configureEach {
-    enabled = false
 }
 
 flutter {

@@ -14,7 +14,7 @@ class AuthRepository {
   }) async {
     final nameParts = fullName.trim().split(RegExp(r'\s+'));
     final firstName = nameParts.isNotEmpty && nameParts[0].isNotEmpty ? nameParts[0] : 'Farmer';
-    final lastName = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : 'User';
+    final lastName = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
 
     final response = await _client.post(
       '/api/auth/register',

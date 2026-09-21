@@ -1,8 +1,12 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/bottom_nav_bar.dart';
+import '../../../shared/widgets/user_avatar.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/settings_provider.dart';
@@ -10,6 +14,214 @@ import '../../../models/user_profile.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
+
+  Future<void> _pickImage(BuildContext context, ImageSource source) async {
+    try {
+      final picker = ImagePicker();
+      XFile? pickedFile;
+
+      try {
+        pickedFile = await picker.pickImage(
+          source: source,
+          maxWidth: 1024,
+          maxHeight: 1024,
+          imageQuality: 85,
+        );
+      } catch (e) {
+        debugPrint('[ProfileScreen] Pick image with compression failed: $e, trying raw picker');
+        try {
+          pickedFile = await picker.pickImage(source: source);
+        } catch (innerErr) {
+          debugPrint('[ProfileScreen] Raw picker also failed: $innerErr');
+          rethrow;
+        }
+      }
+
+      if (pickedFile == null) {
+        // User backed out / cancelled selection
+        return;
+      }
+
+      // Read image bytes and store permanently in app's document storage
+      final bytes = await pickedFile.readAsBytes();
+      final appDir = await getApplicationDocumentsDirectory();
+      final avatarsDir = Directory('${appDir.path}/avatars');
+      if (!await avatarsDir.exists()) {
+        await avatarsDir.create(recursive: true);
+      }
+
+      final fileName = 'avatar_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final permanentFile = File('${avatarsDir.path}/$fileName');
+      await permanentFile.writeAsBytes(bytes);
+
+      if (context.mounted) {
+        await context.read<AuthProvider>().updateProfile(profileImage: permanentFile.path);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Row(
+                children: [
+                  Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                  SizedBox(width: 8),
+                  Text('Profile photo updated successfully!'),
+                ],
+              ),
+              backgroundColor: Color(0xFF10B981),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('[ProfileScreen] Error picking/saving avatar: $e');
+      if (context.mounted) {
+        final errorText = e.toString().toLowerCase().contains('permission') ||
+                e.toString().toLowerCase().contains('denied')
+            ? 'Storage/Photos permission denied. Please allow permission in Settings.'
+            : 'Could not access image: Please choose another photo.';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorText),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  // ── Avatar Picker Bottom Sheet ──────────────────────────────────────────────
+  void _showAvatarPickerSheet(BuildContext context, UserProfile user) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final settings = context.read<SettingsProvider>();
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) => Container(
+        decoration: BoxDecoration(
+          color: theme.cardColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          border: Border.all(
+            color: settings.highContrast ? theme.colorScheme.primary : theme.dividerColor,
+            width: settings.highContrast ? 2.0 : 1.0,
+          ),
+        ),
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF2E4234) : const Color(0xFFCBD5E1),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              'Profile Photo',
+              style: TextStyle(
+                fontSize: 19,
+                fontWeight: FontWeight.w800,
+                color: theme.colorScheme.onSurface,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Upload a photo from your gallery or capture using camera',
+              style: TextStyle(
+                fontSize: 13,
+                color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Option 1: Gallery
+            ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              tileColor: isDark ? const Color(0xFF161F1A) : const Color(0xFFF8FAFC),
+              leading: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: isDark ? 0.2 : 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.photo_library_rounded, color: AppColors.primary, size: 22),
+              ),
+              title: const Text('Choose from Gallery', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14.5)),
+              subtitle: const Text('Select any picture from your device', style: TextStyle(fontSize: 12)),
+              trailing: const Icon(Icons.chevron_right_rounded, size: 20),
+              onTap: () {
+                Navigator.pop(sheetCtx);
+                _pickImage(context, ImageSource.gallery);
+              },
+            ),
+            const SizedBox(height: 10),
+
+            // Option 2: Camera
+            ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              tileColor: isDark ? const Color(0xFF161F1A) : const Color(0xFFF8FAFC),
+              leading: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF3B82F6).withValues(alpha: isDark ? 0.2 : 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.camera_alt_rounded, color: Color(0xFF3B82F6), size: 22),
+              ),
+              title: const Text('Take Photo', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14.5)),
+              subtitle: const Text('Use your phone camera', style: TextStyle(fontSize: 12)),
+              trailing: const Icon(Icons.chevron_right_rounded, size: 20),
+              onTap: () {
+                Navigator.pop(sheetCtx);
+                _pickImage(context, ImageSource.camera);
+              },
+            ),
+
+            if (user.profileImage.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                tileColor: isDark ? const Color(0xFF261818) : const Color(0xFFFFF1F2),
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.delete_outline_rounded, color: Colors.red, size: 22),
+                ),
+                title: const Text('Remove Photo', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14.5, color: Colors.red)),
+                subtitle: const Text('Revert to default initials', style: TextStyle(fontSize: 12)),
+                onTap: () async {
+                  Navigator.pop(sheetCtx);
+                  await context.read<AuthProvider>().updateProfile(profileImage: '');
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Profile photo removed'),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
+                },
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
 
   // ── Edit Profile Bottom Sheet ──────────────────────────────────────────────
   void _showEditProfileSheet(BuildContext context, UserProfile user) {
@@ -62,7 +274,35 @@ class ProfileScreen extends StatelessWidget {
                     color: theme.colorScheme.onSurface,
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
+
+                // Avatar Change Preview
+                Center(
+                  child: Column(
+                    children: [
+                      UserAvatar(
+                        profileImage: user.profileImage,
+                        initials: user.initials,
+                        size: 72,
+                        showEditBadge: true,
+                        onTap: () {
+                          Navigator.pop(sheetCtx);
+                          _showAvatarPickerSheet(context, user);
+                        },
+                      ),
+                      const SizedBox(height: 6),
+                      TextButton.icon(
+                        onPressed: () {
+                          Navigator.pop(sheetCtx);
+                          _showAvatarPickerSheet(context, user);
+                        },
+                        icon: const Icon(Icons.photo_camera_rounded, size: 16),
+                        label: const Text('Change Photo', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
 
                 // Full Name
                 Text(
@@ -213,9 +453,16 @@ class ProfileScreen extends StatelessWidget {
 
     final areaDisplay = settings.formatArea(user.totalAreaAcres);
 
-    return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) {
+          context.go('/home');
+        }
+      },
+      child: Scaffold(
+        backgroundColor: theme.scaffoldBackgroundColor,
+        appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         title: Text(
@@ -257,45 +504,13 @@ class ProfileScreen extends StatelessWidget {
                       ),
                       child: Column(
                         children: [
-                          // Avatar with neon/green aura
-                          Container(
-                            width: 80,
-                            height: 80,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: isDark ? const Color(0xFF00E676) : const Color(0xFF22C55E),
-                                width: 3.0,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: isDark
-                                      ? const Color(0xFF00E676).withValues(alpha: 0.25)
-                                      : const Color(0x18000000),
-                                  blurRadius: 12,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: ClipOval(
-                              child: Image.asset(
-                                'assets/images/farmer_avatar.jpg',
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) => Container(
-                                  color: isDark ? const Color(0xFF133520) : const Color(0xFF166534),
-                                  child: Center(
-                                    child: Text(
-                                      user.initials,
-                                      style: TextStyle(
-                                        fontSize: 26,
-                                        fontWeight: FontWeight.w800,
-                                        color: isDark ? const Color(0xFF00E676) : Colors.white,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
+                          // Editable Avatar with camera badge
+                          UserAvatar(
+                            profileImage: user.profileImage,
+                            initials: user.initials,
+                            size: 84,
+                            showEditBadge: true,
+                            onTap: () => _showAvatarPickerSheet(context, user),
                           ),
                           const SizedBox(height: 12),
                           Text(
@@ -396,25 +611,25 @@ class ProfileScreen extends StatelessWidget {
                         icon: Icons.agriculture_outlined,
                         label: settings.tr('my_farms'),
                         settings: settings,
-                        onTap: () => context.go('/farms'),
+                        onTap: () => context.push('/farms'),
                       ),
                       _MenuItem(
                         icon: Icons.settings_outlined,
                         label: settings.tr('app_settings'),
                         settings: settings,
-                        onTap: () => context.go('/settings'),
+                        onTap: () => context.push('/settings'),
                       ),
                       _MenuItem(
                         icon: Icons.help_outline_rounded,
                         label: settings.tr('help_support'),
                         settings: settings,
-                        onTap: () => context.go('/help-support'),
+                        onTap: () => context.push('/help-support'),
                       ),
                       _MenuItem(
                         icon: Icons.info_outline_rounded,
                         label: settings.tr('about'),
                         settings: settings,
-                        onTap: () => context.go('/about'),
+                        onTap: () => context.push('/about'),
                       ),
                     ]),
                     const SizedBox(height: 14),
@@ -492,6 +707,7 @@ class ProfileScreen extends StatelessWidget {
           ],
         ),
       ),
+    ),
     );
   }
 

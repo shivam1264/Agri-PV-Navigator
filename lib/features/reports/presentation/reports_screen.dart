@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:open_filex/open_filex.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/bottom_nav_bar.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/report_provider.dart';
 import '../../../providers/farm_provider.dart';
+import '../../../providers/design_provider.dart';
 import '../../../models/proposal_report.dart';
+import '../../../services/pdf/report_pdf_service.dart';
+import '../../../services/calculation/agri_pv_calculation_service.dart';
+import 'report_detail_screen.dart';
 
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
@@ -44,16 +49,29 @@ class _ReportsScreenState extends State<ReportsScreen> {
     final farmProv = context.watch<FarmProvider>();
     final allReports = List<ProposalReport>.from(reportProv.reports);
 
-    // Auto-populate proposal reports for each registered farm if not already present
-    for (final farm in farmProv.farms) {
-      if (!allReports.any((r) => r.farmName.toLowerCase() == farm.name.toLowerCase())) {
+    // Resolve active farm or fallback farm
+    final fallbackFarm = farmProv.selectedFarm ??
+        (farmProv.farms.isNotEmpty ? farmProv.farms.first : farmProv.currentOrDraftFarm);
+    final targetFarms = farmProv.farms.isNotEmpty ? farmProv.farms : [fallbackFarm];
+
+    // Ensure strictly ONE comprehensive proposal report per farm
+    for (final farm in targetFarms) {
+      final baseId = farm.id.isNotEmpty ? farm.id : 'farm_${farm.name.hashCode}';
+      final repId = 'rep_prop_$baseId';
+
+      if (reportProv.isDeleted(repId) || reportProv.isDeleted(baseId)) continue;
+
+      if (!allReports.any((r) =>
+          r.farmName.toLowerCase() == farm.name.toLowerCase() ||
+          r.id == repId ||
+          r.id == baseId)) {
         allReports.add(ProposalReport(
-          id: 'rep_${farm.id}',
-          title: '${farm.name} Agri-PV Feasibility & Proposal',
+          id: repId,
+          title: '${farm.name} Agri-PV Comprehensive Feasibility & Proposal',
           farmName: farm.name,
           date: DateTime.now(),
           type: ReportType.proposal,
-          fileSize: '1.4 MB',
+          fileSize: '1.8 MB',
           downloadUrl: '/api/reports/download/proposal',
         ));
       }
@@ -61,11 +79,27 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
     final filtered = allReports.where((r) {
       if (_selectedCategory == 'All') return true;
-      return r.type.category == _selectedCategory;
+      if (_selectedCategory == 'Designs') {
+        return r.type == ReportType.proposal || r.type == ReportType.technical;
+      }
+      if (_selectedCategory == 'Financial') {
+        return r.type == ReportType.financial || r.type == ReportType.proposal;
+      }
+      if (_selectedCategory == 'Impact') {
+        return r.type == ReportType.environmental || r.type == ReportType.proposal;
+      }
+      return true;
     }).toList();
 
-    return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) {
+          context.go('/home');
+        }
+      },
+      child: Scaffold(
+        backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -192,6 +226,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
           ],
         ),
       ),
+    ),
     );
   }
 }
@@ -224,23 +259,12 @@ class _ReportCard extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () async {
-            final scaffold = ScaffoldMessenger.of(context);
-            scaffold.showSnackBar(
-              SnackBar(
-                content: Text('Downloading "${report.title}"...'),
-                duration: const Duration(seconds: 1),
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => ReportDetailScreen(report: report),
               ),
             );
-            final path = await context.read<ReportProvider>().downloadAndOpenReport(report);
-            if (path != null) {
-              scaffold.showSnackBar(
-                SnackBar(
-                  content: Text('Opened: ${report.title}'),
-                  backgroundColor: AppColors.primary,
-                ),
-              );
-            }
           },
           borderRadius: BorderRadius.circular(14),
           child: Padding(
@@ -265,42 +289,56 @@ class _ReportCard extends StatelessWidget {
                     children: [
                       Text(
                         report.title,
+                        softWrap: true,
                         style: TextStyle(
                           fontSize: 14.5,
                           fontWeight: FontWeight.w700,
+                          height: 1.25,
                           color: isDark ? Colors.white : const Color(0xFF0F172A),
                         ),
                       ),
-                      const SizedBox(height: 3),
-                      Row(
+                      const SizedBox(height: 5),
+                      Wrap(
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 8,
+                        runSpacing: 4,
                         children: [
-                          Icon(
-                            Icons.agriculture_outlined,
-                            size: 12,
-                            color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.agriculture_outlined,
+                                size: 12,
+                                color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                report.farmName,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 4),
-                          Text(
-                            report.farmName,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Icon(
-                            Icons.calendar_today_outlined,
-                            size: 11,
-                            color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            DateFormat('dd MMM yyyy').format(report.date),
-                            style: TextStyle(
-                              fontSize: 11.5,
-                              color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
-                            ),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.calendar_today_outlined,
+                                size: 11,
+                                color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                DateFormat('dd MMM yyyy').format(report.date),
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -308,22 +346,57 @@ class _ReportCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+                Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: color.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        'PDF',
-                        style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: color),
+                    // Delete Button
+                    GestureDetector(
+                      onTap: () => _handleDeleteReport(context),
+                      behavior: HitTestBehavior.opaque,
+                      child: Container(
+                        padding: const EdgeInsets.all(7),
+                        margin: const EdgeInsets.only(right: 6),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF2C1616) : const Color(0xFFFEE2E2),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: isDark ? const Color(0xFF5C2626) : const Color(0xFFFECACA),
+                            width: 0.8,
+                          ),
+                        ),
+                        child: const Icon(Icons.delete_outline_rounded, size: 18, color: Color(0xFFEF4444)),
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    const Icon(Icons.download_rounded, size: 18, color: Color(0xFF94A3B8)),
+                    // Download Button
+                    GestureDetector(
+                      onTap: () => _handleDirectDownload(context),
+                      behavior: HitTestBehavior.opaque,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: color.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              'PDF',
+                              style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: color),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Container(
+                            padding: const EdgeInsets.all(5),
+                            decoration: BoxDecoration(
+                              color: isDark ? const Color(0xFF1E2721) : const Color(0xFFF1F5F9),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Icon(Icons.download_rounded, size: 18, color: AppColors.primary),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ],
@@ -332,5 +405,119 @@ class _ReportCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _handleDeleteReport(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Report?'),
+        content: Text('Are you sure you want to delete the report for "${report.farmName}"? This action cannot be undone.'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFDC2626),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      await context.read<ReportProvider>().deleteReport(report.id);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+                const SizedBox(width: 8),
+                Expanded(child: Text('Report for "${report.farmName}" deleted.')),
+              ],
+            ),
+            backgroundColor: const Color(0xFF1E293B),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleDirectDownload(BuildContext context) async {
+    final scaffold = ScaffoldMessenger.of(context);
+    scaffold.showSnackBar(
+      SnackBar(
+        content: Text('Downloading "${report.title}"...'),
+        duration: const Duration(seconds: 1),
+      ),
+    );
+
+    try {
+      final farmProv = context.read<FarmProvider>();
+      final matched = farmProv.farms.where(
+        (f) => f.name.toLowerCase() == report.farmName.toLowerCase() ||
+               f.id == report.id.replaceFirst('rep_', ''),
+      );
+      final farm = matched.isNotEmpty
+          ? matched.first
+          : (farmProv.selectedFarm ?? farmProv.currentOrDraftFarm);
+      final design = context.read<DesignProvider>().activeDesign ??
+          AgriPvCalculationService.generateDesign(
+            id: 'design_${farm.id}',
+            name: '${farm.name} Agri-PV System',
+            areaAcres: farm.areaAcres > 0 ? farm.areaAcres : 2.5,
+            crop: farm.crop.isNotEmpty ? farm.crop : 'Wheat',
+          );
+
+      final fallbackBytes = await ReportPdfService.buildProposalPdfBytes(farm: farm, design: design);
+      if (!context.mounted) return;
+      final path = await context.read<ReportProvider>().downloadAndOpenReport(report, fallbackBytes: fallbackBytes);
+
+      if (path != null && context.mounted) {
+        scaffold.showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Saved: ${report.title}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: AppColors.primary,
+            behavior: SnackBarBehavior.floating,
+            action: SnackBarAction(
+              label: 'Open',
+              textColor: Colors.white,
+              onPressed: () => OpenFilex.open(path),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        scaffold.showSnackBar(
+          SnackBar(
+            content: Text('Download failed: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 }

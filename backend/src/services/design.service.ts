@@ -8,7 +8,7 @@ export class DesignService {
   public static async getDesignsByFarm(userId: string, farmId: string): Promise<IAgriPvDesign[]> {
     const farm = await FarmService.getFarmById(userId, farmId);
 
-    let designs = await AgriPvDesign.find({
+    let designs: any = await AgriPvDesign.find({
       farmId: farm._id,
       userId: new mongoose.Types.ObjectId(userId),
     }).sort({ createdAt: -1 });

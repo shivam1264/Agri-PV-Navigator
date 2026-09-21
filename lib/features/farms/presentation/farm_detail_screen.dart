@@ -8,6 +8,7 @@ import '../../../shared/widgets/bottom_nav_bar.dart';
 import 'package:provider/provider.dart';
 import '../../../shared/painters/farm_boundary_painter.dart';
 import '../../../providers/farm_provider.dart';
+import '../../../providers/report_provider.dart';
 
 class FarmDetailScreen extends StatelessWidget {
   const FarmDetailScreen({super.key});
@@ -59,6 +60,60 @@ class FarmDetailScreen extends StatelessWidget {
           icon: const Icon(Icons.arrow_back_rounded),
           onPressed: () => context.go('/farms'),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFFEF4444)),
+            tooltip: 'Delete Farm',
+            onPressed: () async {
+              final confirmed = await showDialog<bool>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Text('Delete Farm?'),
+                  content: Text('Are you sure you want to delete "${farm.name}"? This action cannot be undone.'),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(ctx).pop(false),
+                      child: const Text('Cancel'),
+                    ),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFDC2626),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      onPressed: () => Navigator.of(ctx).pop(true),
+                      child: const Text('Delete'),
+                    ),
+                  ],
+                ),
+              );
+
+              if (confirmed == true && context.mounted) {
+                await context.read<FarmProvider>().deleteFarm(farm.id);
+                if (context.mounted) {
+                  context.read<ReportProvider>().deleteReport('rep_prop_${farm.id}');
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Row(
+                        children: [
+                          const Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+                          const SizedBox(width: 8),
+                          Expanded(child: Text('Farm "${farm.name}" deleted.')),
+                        ],
+                      ),
+                      backgroundColor: const Color(0xFF1E293B),
+                      behavior: SnackBarBehavior.floating,
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                  context.go('/farms');
+                }
+              }
+            },
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: SafeArea(
         child: Column(

@@ -107,13 +107,34 @@ class Farm {
 
     final idVal = (data['id'] ?? data['_id'] ?? '').toString();
 
+    final farmName = (data['name'] ?? 'My Farm').toString();
+    String loc = '';
+    if (data['locationName'] is String && (data['locationName'] as String).trim().isNotEmpty) {
+      loc = (data['locationName'] as String).trim();
+    } else if (data['district'] is String && (data['district'] as String).trim().isNotEmpty) {
+      loc = (data['district'] as String).trim();
+    } else if (data['location'] is String && (data['location'] as String).trim().isNotEmpty) {
+      loc = (data['location'] as String).trim();
+    }
+
+    // If location is still empty or mismatched default Prayagraj while name is 'Farm at X'
+    if ((loc.isEmpty || loc.toLowerCase().contains('prayagraj')) && farmName.toLowerCase().startsWith('farm at ')) {
+      final extracted = farmName.substring(8).trim();
+      if (extracted.isNotEmpty && !extracted.toLowerCase().contains('prayagraj')) {
+        loc = extracted;
+      }
+    }
+    if (loc.isEmpty) {
+      loc = 'Farm Site';
+    }
+
     return Farm(
       id: idVal,
-      name: data['name'] ?? 'My Farm',
+      name: farmName,
       areaAcres: (data['areaAcres'] is num) ? (data['areaAcres'] as num).toDouble() : 2.35,
       crop: data['crop'] ?? data['cropType'] ?? 'Wheat',
-      location: data['location'] is String ? data['location'] : (data['locationName'] ?? 'Phulpur, Prayagraj'),
-      state: data['state'] ?? 'Uttar Pradesh, India',
+      location: loc,
+      state: data['state'] ?? 'India',
       suitabilityScore: (data['suitabilityScore'] is num) ? (data['suitabilityScore'] as num).toInt() : 80,
       status: FarmStatus.fromString(data['status']),
       soilType: data['soilType'] ?? 'Loamy',

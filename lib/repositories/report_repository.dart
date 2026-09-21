@@ -47,27 +47,55 @@ class ReportRepository {
     return ProposalReport.fromJson(data);
   }
 
-  Future<String> downloadReportPdf(String reportId, String filename) async {
+  Future<String> downloadReportPdf(
+    String reportId,
+    String filename, {
+    String? downloadUrl,
+    List<int>? fallbackBytes,
+  }) async {
     final token = await TokenStorage.getAccessToken();
-    final url = Uri.parse('${AppConfig.baseUrl}/api/reports/$reportId/download');
 
-    final response = await http.get(
-      url,
-      headers: {
-        if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
-      },
-    );
+    final candidateUrls = <Uri>[];
+    if (downloadUrl != null && downloadUrl.isNotEmpty) {
+      final fullUrl = downloadUrl.startsWith('http')
+          ? downloadUrl
+          : '${AppConfig.baseUrl}${downloadUrl.startsWith('/') ? '' : '/'}$downloadUrl';
+      candidateUrls.add(Uri.parse(fullUrl));
+    }
+    candidateUrls.add(Uri.parse('${AppConfig.baseUrl}/api/reports/$reportId/download'));
 
-    if (response.statusCode == 200) {
+    for (final url in candidateUrls) {
+      try {
+        final response = await http.get(
+          url,
+          headers: {
+            if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+          },
+        ).timeout(const Duration(seconds: 6));
+
+        if (response.statusCode == 200 && response.bodyBytes.isNotEmpty) {
+          final dir = await getApplicationDocumentsDirectory();
+          final sanitizedFilename = filename.replaceAll(RegExp(r'[^\w\.\-]'), '_');
+          final cleanName = sanitizedFilename.endsWith('.pdf') ? sanitizedFilename : '$sanitizedFilename.pdf';
+          final file = File('${dir.path}/$cleanName');
+          await file.writeAsBytes(response.bodyBytes);
+          return file.path;
+        }
+      } catch (_) {
+        // Try next candidate
+      }
+    }
+
+    if (fallbackBytes != null && fallbackBytes.isNotEmpty) {
       final dir = await getApplicationDocumentsDirectory();
       final sanitizedFilename = filename.replaceAll(RegExp(r'[^\w\.\-]'), '_');
       final cleanName = sanitizedFilename.endsWith('.pdf') ? sanitizedFilename : '$sanitizedFilename.pdf';
       final file = File('${dir.path}/$cleanName');
-      await file.writeAsBytes(response.bodyBytes);
+      await file.writeAsBytes(fallbackBytes);
       return file.path;
-    } else {
-      throw Exception('Failed to download report PDF (Status: ${response.statusCode})');
     }
+
+    throw Exception('Failed to download report PDF');
   }
 
   Future<void> deleteReport(String id) async {

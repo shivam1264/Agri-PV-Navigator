@@ -15,6 +15,18 @@ export interface IGenerateReportOptions {
   outputPath: string;
 }
 
+function cleanStr(val: any, fallback = ''): string {
+  if (val === null || val === undefined) return fallback;
+  const s = String(val)
+    .replace(/₹/g, 'Rs. ')
+    .replace(/°/g, ' deg')
+    .replace(/²/g, '2')
+    .replace(/³/g, '3')
+    .replace(/[^\x00-\x7F]/g, '')
+    .trim();
+  return s.length > 0 ? s : fallback;
+}
+
 export class PdfReportGenerator {
   public static async generate(options: IGenerateReportOptions): Promise<{ filePath: string; fileSizeStr: string }> {
     const { user, farm, design, suitability, reportType, outputPath } = options;
@@ -24,12 +36,17 @@ export class PdfReportGenerator {
       fs.mkdirSync(dir, { recursive: true });
     }
 
+    const cleanFarmName = cleanStr(farm.name, 'Agri-PV Farm');
+    const cleanLocation = cleanStr(farm.locationName, 'Project Site');
+    const cleanState = cleanStr(farm.state, 'India');
+    const cleanUser = `${cleanStr(user.firstName)} ${cleanStr(user.lastName)}`.trim();
+
     return new Promise((resolve, reject) => {
       const doc = new PDFDocument({
         size: 'A4',
         margin: 40,
         info: {
-          Title: `Agri-PV Project Proposal - ${farm.name}`,
+          Title: `Agri-PV Project Proposal - ${cleanFarmName}`,
           Author: 'Agri-PV Navigator',
           Subject: 'Bankable Agrivoltaic Feasibility Report',
         },
@@ -54,9 +71,9 @@ export class PdfReportGenerator {
       doc.moveDown(3);
 
       // ── Document Metadata ──
-      doc.fillColor(darkColor).fontSize(16).font('Helvetica-Bold').text(`Project Proposal: ${farm.name}`, 40, 125);
+      doc.fillColor(darkColor).fontSize(16).font('Helvetica-Bold').text(`Project Proposal: ${cleanFarmName}`, 40, 125);
       doc.fontSize(10).font('Helvetica').fillColor(grayColor);
-      doc.text(`Generated For: ${user.firstName} ${user.lastName} (${user.email})`, 40, 145);
+      doc.text(`Generated For: ${cleanUser} (${user.email})`, 40, 145);
       doc.text(`Date of Assessment: ${new Date().toLocaleDateString('en-IN', { dateStyle: 'long' })}`, 40, 160);
       doc.text(`Report Type: ${reportType.toUpperCase()} | Verification Standard: CERC / MNRE Compliant`, 40, 175);
 
@@ -66,10 +83,10 @@ export class PdfReportGenerator {
       doc.fillColor(primaryColor).fontSize(13).font('Helvetica-Bold').text('1. FARM & GEOGRAPHICAL PROFILE', 40, 210);
 
       const farmDetails = [
-        ['Farm Name:', farm.name, 'Total Land Area:', `${farm.areaAcres.toFixed(2)} Acres`],
-        ['Location:', `${farm.locationName}, ${farm.state}`, 'Primary Crop:', farm.cropType],
-        ['Soil Type:', farm.soilType, 'Topographical Slope:', farm.slope],
-        ['Irrigation Source:', farm.irrigation, 'Grid Distance:', `${farm.gridProximityKm} km to Feeder`],
+        ['Farm Name:', cleanFarmName, 'Total Land Area:', `${farm.areaAcres.toFixed(2)} Acres`],
+        ['Location:', `${cleanLocation}, ${cleanState}`, 'Primary Crop:', cleanStr(farm.cropType, 'Wheat')],
+        ['Soil Type:', cleanStr(farm.soilType, 'Loamy'), 'Topographical Slope:', cleanStr(farm.slope, '< 2%')],
+        ['Irrigation Source:', cleanStr(farm.irrigation, 'Available'), 'Grid Distance:', `${farm.gridProximityKm} km to Feeder`],
       ];
 
       let currentY = 230;
@@ -114,10 +131,10 @@ export class PdfReportGenerator {
 
         suitability.factors.forEach((factor) => {
           doc.font('Helvetica').fontSize(8.5).fillColor(darkColor);
-          doc.text(factor.name, 45, currentY);
+          doc.text(cleanStr(factor.name), 45, currentY);
           doc.text(`${factor.score}/100`, 180, currentY);
-          doc.text(factor.metricValue, 240, currentY);
-          doc.fillColor(grayColor).text(factor.impact.substring(0, 42), 360, currentY);
+          doc.text(cleanStr(factor.metricValue), 240, currentY);
+          doc.fillColor(grayColor).text(cleanStr(factor.impact).substring(0, 42), 360, currentY);
           currentY += 15;
         });
       }
@@ -137,7 +154,7 @@ export class PdfReportGenerator {
 
       const techSpecs = [
         ['Installed DC Capacity:', `${capacity.toFixed(1)} kWp`, 'Annual Generation:', `${annualEnergy.toFixed(1)} MWh/yr`],
-        ['Mounting Structure:', mounting.toUpperCase(), 'Panel Tilt Angle:', `${tilt}° South-Facing`],
+        ['Mounting Structure:', mounting.toUpperCase(), 'Panel Tilt Angle:', `${tilt} deg South-Facing`],
         ['Module Clearance Height:', `${height.toFixed(1)} m`, 'Inter-row Spacing:', `${spacing.toFixed(1)} m`],
         ['Land Coverage Ratio:', `${coverage.toFixed(0)}%`, 'Cultivable Land Retained:', `${design?.cultivableAreaPercent ?? 82}%`],
       ];

@@ -64,10 +64,10 @@ export class AuthService {
     if ((!firstName || !lastName) && combined) {
       const parts = combined.trim().split(/\s+/);
       firstName = firstName || parts[0] || 'Farmer';
-      lastName = lastName || (parts.length > 1 ? parts.slice(1).join(' ') : 'User');
+      lastName = lastName || (parts.length > 1 ? parts.slice(1).join(' ') : '');
     }
     const finalFirstName = (firstName || 'Farmer').trim();
-    const finalLastName = (lastName || 'User').trim();
+    const finalLastName = (lastName || '').trim();
 
     const normalizedEmail = data.email.toLowerCase().trim();
     const existing = await User.findOne({ email: normalizedEmail });
@@ -205,12 +205,24 @@ export class AuthService {
   }
 
   public static formatUser(user: IUser, totalFarms: number = 0, totalAreaAcres: number = 0, designsCreated: number = 0) {
-    const initials = `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`.toUpperCase();
+    const cleanLastName = (user.lastName && user.lastName.trim().toLowerCase() !== 'user') ? user.lastName.trim() : '';
+    const cleanFirstName = user.firstName ? user.firstName.trim() : 'Farmer';
+    const fullName = cleanLastName ? `${cleanFirstName} ${cleanLastName}` : cleanFirstName;
+
+    let initials = 'SK';
+    if (cleanLastName && cleanLastName.length > 0) {
+      initials = `${cleanFirstName.charAt(0)}${cleanLastName.charAt(0)}`.toUpperCase();
+    } else if (cleanFirstName.length >= 2) {
+      initials = cleanFirstName.substring(0, 2).toUpperCase();
+    } else if (cleanFirstName.length === 1) {
+      initials = cleanFirstName.toUpperCase();
+    }
+
     return {
       id: user._id.toString(),
-      firstName: user.firstName,
-      lastName: user.lastName,
-      name: `${user.firstName} ${user.lastName}`.trim(),
+      firstName: cleanFirstName,
+      lastName: cleanLastName,
+      name: fullName,
       email: user.email,
       phone: user.phone || '',
       initials,

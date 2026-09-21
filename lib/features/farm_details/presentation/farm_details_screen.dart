@@ -34,13 +34,10 @@ class _FarmDetailsScreenState extends State<FarmDetailsScreen> {
   void initState() {
     super.initState();
     final draft = context.read<FarmProvider>().draftFarm;
-    final draftDistrict = (draft['district'] as String? ?? '').trim();
-    final draftName = (draft['name'] as String? ?? '').trim();
-
-    if (draftName.isNotEmpty && !draftName.toLowerCase().startsWith('farm at ')) {
-      _nameController.text = draftName;
-    } else if (draftDistrict.isNotEmpty && draftDistrict.toLowerCase() != 'location') {
-      _nameController.text = 'Farm at $draftDistrict';
+    if (draft['name'] != null && (draft['name'] as String).isNotEmpty) {
+      _nameController.text = draft['name'];
+    } else if (draft['district'] != null && (draft['district'] as String).isNotEmpty) {
+      _nameController.text = 'Farm at ${draft['district']}';
     } else {
       _nameController.text = 'My Solar Farm';
     }

@@ -1,24 +1,55 @@
 import '../core/network/api_client.dart';
 import '../models/support_ticket.dart';
+import '../features/support/data/faq_knowledge_base.dart';
 
 class SupportRepository {
   final ApiClient _client = ApiClient();
 
   Future<List<FaqItemModel>> getFaqs({String? category}) async {
-    final queryParams = <String, dynamic>{};
-    if (category != null) queryParams['category'] = category;
+    try {
+      final queryParams = <String, dynamic>{};
+      if (category != null) queryParams['category'] = category;
 
-    final response = await _client.get('/api/support/faqs', queryParams: queryParams, requiresAuth: false);
-    if (response is List) {
-      return response.map((f) => FaqItemModel.fromJson(f as Map<String, dynamic>)).toList();
+      final response = await _client.get('/api/support/faqs', queryParams: queryParams, requiresAuth: false);
+
+      List rawList = [];
+      if (response is List) {
+        rawList = response;
+      } else if (response is Map && response['faqs'] is List) {
+        rawList = response['faqs'] as List;
+      }
+
+      if (rawList.isNotEmpty) {
+        return rawList.map((f) => FaqItemModel.fromJson(f as Map<String, dynamic>)).toList();
+      }
+    } catch (_) {
+      // Fallback seamlessly to local offline institutional knowledge
     }
-    return [];
+
+    // Default institutional knowledge base fallback
+    var localItems = FaqKnowledgeBase.items;
+    if (category != null && category.isNotEmpty && category != 'All') {
+      localItems = FaqKnowledgeBase.getByCategory(category);
+    }
+
+    return localItems
+        .map(
+          (item) => FaqItemModel(
+            id: item.id,
+            question: item.questionEn,
+            answer: item.answerEn,
+            category: item.category,
+          ),
+        )
+        .toList();
   }
 
   Future<List<SupportTicketModel>> getTickets() async {
     final response = await _client.get('/api/support/tickets');
     if (response is List) {
       return response.map((t) => SupportTicketModel.fromJson(t as Map<String, dynamic>)).toList();
+    } else if (response is Map && response['tickets'] is List) {
+      return (response['tickets'] as List).map((t) => SupportTicketModel.fromJson(t as Map<String, dynamic>)).toList();
     }
     return [];
   }
@@ -36,6 +67,10 @@ class SupportRepository {
         'category': category,
       },
     );
-    return SupportTicketModel.fromJson(response);
+    final data = (response is Map && response['ticket'] is Map)
+        ? response['ticket'] as Map<String, dynamic>
+        : (response is Map<String, dynamic> ? response : <String, dynamic>{});
+
+    return SupportTicketModel.fromJson(data);
   }
 }

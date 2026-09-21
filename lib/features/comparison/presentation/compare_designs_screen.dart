@@ -1,25 +1,31 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/bottom_nav_bar.dart';
-import '../../../services/storage/mock_data_service.dart';
+import '../../../providers/farm_provider.dart';
+import '../../../services/calculation/agri_pv_optimizer_service.dart';
 
-class CompareDesignsScreen extends StatefulWidget {
+class CompareDesignsScreen extends ConsumerStatefulWidget {
   const CompareDesignsScreen({super.key});
 
   @override
-  State<CompareDesignsScreen> createState() => _CompareDesignsScreenState();
+  ConsumerState<CompareDesignsScreen> createState() => _CompareDesignsScreenState();
 }
 
-class _CompareDesignsScreenState extends State<CompareDesignsScreen> {
+class _CompareDesignsScreenState extends ConsumerState<CompareDesignsScreen> {
   int _selectedDesignIndex = 1; // Default is Design B (Best overall balance)
 
   @override
   Widget build(BuildContext context) {
-    final designs = MockDataService().compareDesigns;
+    final draftFarm = ref.watch(draftFarmProvider);
+    final designs = AgriPvOptimizerService.generateAllStrategies(
+      areaAcres: draftFarm.areaAcres > 0 ? draftFarm.areaAcres : 2.35,
+      crop: draftFarm.crop.isNotEmpty ? draftFarm.crop : 'Wheat',
+    );
     final selectedDesign = designs[_selectedDesignIndex];
 
     return Scaffold(
@@ -131,31 +137,76 @@ class _CompareDesignsScreenState extends State<CompareDesignsScreen> {
                       padding: const EdgeInsets.all(16),
                       child: Column(
                         children: [
-                          _buildTableRow('PV Capacity', '150 kW', '250 kW', '300 kW', isHeader: false),
+                          _buildTableRow(
+                            'PV Capacity',
+                            '${designs[0].pvCapacityKw.toStringAsFixed(0)} kW',
+                            '${designs[1].pvCapacityKw.toStringAsFixed(0)} kW',
+                            '${designs[2].pvCapacityKw.toStringAsFixed(0)} kW',
+                            isHeader: false,
+                          ),
                           const Divider(height: 16, color: AppColors.borderLight),
-                          _buildTableRow('Cultivable Area', '85%', '78%', '70%'),
+                          _buildTableRow(
+                            'Cultivable Area',
+                            '${designs[0].cultivableAreaPercent.toStringAsFixed(0)}%',
+                            '${designs[1].cultivableAreaPercent.toStringAsFixed(0)}%',
+                            '${designs[2].cultivableAreaPercent.toStringAsFixed(0)}%',
+                          ),
                           const Divider(height: 16, color: AppColors.borderLight),
-                          _buildTableRow('Annual Energy', '210 MWh', '350 MWh', '420 MWh'),
+                          _buildTableRow(
+                            'Annual Energy',
+                            '${designs[0].annualEnergyMwh.toStringAsFixed(0)} MWh',
+                            '${designs[1].annualEnergyMwh.toStringAsFixed(0)} MWh',
+                            '${designs[2].annualEnergyMwh.toStringAsFixed(0)} MWh',
+                          ),
                           const Divider(height: 16, color: AppColors.borderLight),
-                          _buildTableRow('Crop Yield', '96%', '94%', '88%'),
+                          _buildTableRow(
+                            'Crop Yield',
+                            '${designs[0].cropYieldPercent.toStringAsFixed(0)}%',
+                            '${designs[1].cropYieldPercent.toStringAsFixed(0)}%',
+                            '${designs[2].cropYieldPercent.toStringAsFixed(0)}%',
+                          ),
                           const Divider(height: 16, color: AppColors.borderLight),
                           _buildTableRow(
                             'Land Use (LER)',
-                            '1.42',
-                            '1.61',
-                            '1.48',
+                            designs[0].landEquivalentRatio.toStringAsFixed(2),
+                            designs[1].landEquivalentRatio.toStringAsFixed(2),
+                            designs[2].landEquivalentRatio.toStringAsFixed(2),
                             highlightMiddle: true,
                           ),
                           const Divider(height: 16, color: AppColors.borderLight),
-                          _buildTableRow('Project Cost', '₹0.78 Cr', '₹1.25 Cr', '₹1.58 Cr'),
+                          _buildTableRow(
+                            'LCOE (Cost/kWh)',
+                            '₹${designs[0].lcoePerKwh.toStringAsFixed(2)}',
+                            '₹${designs[1].lcoePerKwh.toStringAsFixed(2)}',
+                            '₹${designs[2].lcoePerKwh.toStringAsFixed(2)}',
+                          ),
                           const Divider(height: 16, color: AppColors.borderLight),
-                          _buildTableRow('Payback Period', '6.8 yrs', '6.0 yrs', '5.6 yrs'),
+                          _buildTableRow(
+                            'Water Conserved',
+                            '${(designs[0].waterSavedLiters / 1000).toStringAsFixed(0)} kL/y',
+                            '${(designs[1].waterSavedLiters / 1000).toStringAsFixed(0)} kL/y',
+                            '${(designs[2].waterSavedLiters / 1000).toStringAsFixed(0)} kL/y',
+                          ),
+                          const Divider(height: 16, color: AppColors.borderLight),
+                          _buildTableRow(
+                            'Project Cost',
+                            '₹${designs[0].projectCostCr.toStringAsFixed(2)} Cr',
+                            '₹${designs[1].projectCostCr.toStringAsFixed(2)} Cr',
+                            '₹${designs[2].projectCostCr.toStringAsFixed(2)} Cr',
+                          ),
+                          const Divider(height: 16, color: AppColors.borderLight),
+                          _buildTableRow(
+                            'Payback Period',
+                            '${designs[0].paybackYears.toStringAsFixed(1)} yrs',
+                            '${designs[1].paybackYears.toStringAsFixed(1)} yrs',
+                            '${designs[2].paybackYears.toStringAsFixed(1)} yrs',
+                          ),
                         ],
                       ),
                     ),
                     const SizedBox(height: 14),
 
-                    // Selected Recommendation Badge (Matching Screen 13: "Design B / Best Overall Balance")
+                    // Selected Recommendation Badge
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -178,10 +229,10 @@ class _CompareDesignsScreenState extends State<CompareDesignsScreen> {
                             const SizedBox(height: 2),
                             Text(
                               _selectedDesignIndex == 1
-                                  ? 'Best Overall Balance'
+                                  ? 'Best Overall Balance (Peak LER ${selectedDesign.landEquivalentRatio})'
                                   : _selectedDesignIndex == 0
-                                      ? 'Lowest Initial Capex'
-                                      : 'Maximum PV Capacity',
+                                      ? 'Lowest Crop Stress (96%+ Yield)'
+                                      : 'Maximum PV Power (${selectedDesign.pvCapacityKw.toStringAsFixed(0)} kW)',
                               style: AppTypography.labelSmall.copyWith(
                                 fontSize: 11,
                                 color: AppColors.primary,
@@ -194,11 +245,14 @@ class _CompareDesignsScreenState extends State<CompareDesignsScreen> {
                     ),
                     const SizedBox(height: 14),
 
-                    // "View Detailed Comparison" Button (Exact wording from Screen 13)
+                    // "View Detailed Comparison" Button
                     AppButton(
                       text: 'View Detailed Comparison',
                       variant: AppButtonVariant.outline,
-                      onPressed: () => context.go('/techno-economic'),
+                      onPressed: () {
+                        ref.read(draftFarmProvider.notifier).setDesign(selectedDesign);
+                        context.go('/techno-economic');
+                      },
                       height: 44,
                     ),
                     const SizedBox(height: 16),
@@ -225,7 +279,10 @@ class _CompareDesignsScreenState extends State<CompareDesignsScreen> {
                     child: AppButton(
                       text: 'Next ›',
                       variant: AppButtonVariant.primary,
-                      onPressed: () => context.go('/techno-economic'),
+                      onPressed: () {
+                        ref.read(draftFarmProvider.notifier).setDesign(selectedDesign);
+                        context.go('/techno-economic');
+                      },
                       height: 46,
                     ),
                   ),

@@ -1,18 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/bottom_nav_bar.dart';
-import '../../../services/storage/mock_data_service.dart';
+import '../../../providers/farm_provider.dart';
 
-class TechnoEconomicScreen extends StatelessWidget {
+class TechnoEconomicScreen extends ConsumerWidget {
   const TechnoEconomicScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final econ = MockDataService().defaultEconomicAssessment;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final draft = ref.watch(draftFarmProvider);
+    final design = draft.design ?? draft.generateDesign();
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -41,12 +43,12 @@ class TechnoEconomicScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Estimated 25-year lifetime metrics for 250 kW elevated stilt Agri-PV installation.',
+                      'Estimated 25-year lifetime metrics for ${design.name} (${design.pvCapacityKw.toInt()} kW ${design.mountingType.label}) on ${draft.name.isNotEmpty ? draft.name : "Farm"}.',
                       style: AppTypography.bodySmall,
                     ),
                     const SizedBox(height: 16),
 
-                    // Primary Metrics Card (7 key metrics)
+                    // Primary Metrics Card (Live Calculated Metrics)
                     AppCard(
                       padding: const EdgeInsets.all(16),
                       child: Column(
@@ -55,50 +57,71 @@ class TechnoEconomicScreen extends StatelessWidget {
                             icon: Icons.solar_power_rounded,
                             color: AppColors.solar,
                             label: 'PV Capacity',
-                            value: '${econ.pvCapacityKw.toInt()} kW',
+                            value: '${design.pvCapacityKw.toInt()} kW',
                           ),
                           const Divider(height: 18, color: AppColors.borderLight),
                           _buildMetricRow(
                             icon: Icons.bolt_rounded,
                             color: AppColors.primary,
                             label: 'Annual Energy',
-                            value: '${econ.annualEnergyMwh.toInt()} MWh/year',
+                            value: '${design.annualEnergyMwh.toInt()} MWh/year',
                           ),
                           const Divider(height: 18, color: AppColors.borderLight),
                           _buildMetricRow(
                             icon: Icons.currency_rupee_rounded,
                             color: AppColors.primaryLight,
                             label: 'Project Cost',
-                            value: '₹ ${econ.projectCostCr.toStringAsFixed(2)} Crore',
+                            value: '₹ ${design.projectCostCr.toStringAsFixed(2)} Crore',
                           ),
                           const Divider(height: 18, color: AppColors.borderLight),
                           _buildMetricRow(
                             icon: Icons.trending_up_rounded,
                             color: AppColors.primary,
                             label: 'Annual Revenue',
-                            value: '₹ ${econ.annualRevenueLakhs.toStringAsFixed(1)} Lakh/year',
+                            value: '₹ ${(design.pvCapacityKw * 0.05).toStringAsFixed(1)} Lakh/year',
                           ),
                           const Divider(height: 18, color: AppColors.borderLight),
                           _buildMetricRow(
                             icon: Icons.timelapse_rounded,
                             color: AppColors.water,
                             label: 'Payback Period',
-                            value: '${econ.paybackPeriodYears.toStringAsFixed(1)} years',
+                            value: '${design.paybackYears.toStringAsFixed(1)} years',
                           ),
                           const Divider(height: 18, color: AppColors.borderLight),
                           _buildMetricRow(
                             icon: Icons.account_balance_wallet_rounded,
                             color: AppColors.soil,
                             label: 'Net Present Value (NPV)',
-                            value: '₹ ${econ.netPresentValueLakhs.toStringAsFixed(1)} Lakh',
+                            value: '₹ ${design.npvLakhs.toStringAsFixed(1)} Lakh',
                             subtitle: '@ 8% discount rate',
+                          ),
+                          const Divider(height: 18, color: AppColors.borderLight),
+                          _buildMetricRow(
+                            icon: Icons.percent_rounded,
+                            color: const Color(0xFF16A34A),
+                            label: 'Internal Rate of Return (IRR)',
+                            value: '${design.irrPercent.toStringAsFixed(1)}%',
+                          ),
+                          const Divider(height: 18, color: AppColors.borderLight),
+                          _buildMetricRow(
+                            icon: Icons.price_check_rounded,
+                            color: AppColors.accent,
+                            label: 'Levelized Cost of Energy (LCOE)',
+                            value: '₹ ${design.lcoePerKwh.toStringAsFixed(2)} / kWh',
+                          ),
+                          const Divider(height: 18, color: AppColors.borderLight),
+                          _buildMetricRow(
+                            icon: Icons.water_drop_rounded,
+                            color: const Color(0xFF0284C7),
+                            label: 'Agricultural Water Saved',
+                            value: '${(design.waterSavedLiters / 1000).toStringAsFixed(0)} kL/year',
                           ),
                           const Divider(height: 18, color: AppColors.borderLight),
                           _buildMetricRow(
                             icon: Icons.forest_rounded,
                             color: AppColors.primaryDark,
                             label: 'CO₂ Saved',
-                            value: '~${econ.co2SavedTons.toInt()} tons/year',
+                            value: '~${design.co2SavedTons.toInt()} tons/year',
                           ),
                         ],
                       ),

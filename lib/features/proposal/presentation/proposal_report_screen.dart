@@ -114,6 +114,9 @@ class _ProposalReportScreenState extends ConsumerState<ProposalReportScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final draft = ref.watch(draftFarmProvider);
+    final design = draft.design ?? draft.generateDesign();
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -187,7 +190,63 @@ class _ProposalReportScreenState extends ConsumerState<ProposalReportScreen> {
                       style: AppTypography.bodySmall,
                       textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 18),
+
+                    // Key Performance Indicators Card
+                    AppCard(
+                      padding: const EdgeInsets.all(14),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                draft.name.isNotEmpty ? draft.name : 'Farm Overview',
+                                style: AppTypography.cardTitle.copyWith(fontSize: 14, fontWeight: FontWeight.w700),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primarySurface,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: AppColors.primary, width: 1),
+                                ),
+                                child: Text(
+                                  'LER: ${design.landEquivalentRatio.toStringAsFixed(2)}',
+                                  style: const TextStyle(
+                                    color: AppColors.primaryDark,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
+                              _buildMetricTile('Capacity', '${design.pvCapacityKw.toInt()} kW'),
+                              _buildMetricTile('Energy', '${design.annualEnergyMwh.toInt()} MWh'),
+                              _buildMetricTile('Ground DLI', '${design.dliMolM2Day.toStringAsFixed(1)} mol'),
+                              _buildMetricTile('Water Saved', '${(design.waterSavedLiters / 1000).toStringAsFixed(0)} kL'),
+                            ],
+                          ),
+                          const Divider(height: 16, color: AppColors.borderLight),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
+                              _buildMetricTile('LCOE', '₹${design.lcoePerKwh.toStringAsFixed(2)}/u'),
+                              _buildMetricTile('IRR', '${design.irrPercent.toStringAsFixed(1)}%'),
+                              _buildMetricTile('Payback', '${design.paybackYears.toStringAsFixed(1)} yrs'),
+                              _buildMetricTile('CO₂ Saved', '${design.co2SavedTons.toInt()} T/y'),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
 
                     // Proposal Contents Checklist Card
                     AppCard(
@@ -286,6 +345,30 @@ class _ProposalReportScreenState extends ConsumerState<ProposalReportScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildMetricTile(String label, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w800,
+            color: AppColors.primaryDark,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 10,
+            color: AppColors.textSecondary,
+          ),
+        ),
+      ],
     );
   }
 }

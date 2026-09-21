@@ -26,6 +26,7 @@ class AppColors {
   static const Color borderFocused = Color(0xFF08783E);
 
   // Semantic Accents
+  static const Color accent = Color(0xFFF59E0B); // Amber Accent
   static const Color solar = Color(0xFFF59E0B); // Amber/Yellow
   static const Color solarLight = Color(0xFFFEF3C7);
   static const Color water = Color(0xFF2563EB); // Blue

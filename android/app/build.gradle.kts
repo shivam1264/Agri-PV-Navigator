@@ -8,6 +8,7 @@ plugins {
 android {
     namespace = "com.agripv.agri_pv_navigator"
     compileSdk = flutter.compileSdkVersion
+    buildToolsVersion = "36.0.0"
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -37,6 +38,16 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+
+    packaging {
+        jniLibs {
+            keepDebugSymbols.add("**/*.so")
+        }
+    }
+}
+
+tasks.matching { it.name.contains("StripDebugSymbols") }.configureEach {
+    enabled = false
 }
 
 flutter {

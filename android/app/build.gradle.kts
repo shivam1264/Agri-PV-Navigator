@@ -38,16 +38,6 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
-
-    packaging {
-        jniLibs {
-            keepDebugSymbols.add("**/*.so")
-        }
-    }
-}
-
-tasks.matching { it.name.contains("StripDebugSymbols") }.configureEach {
-    enabled = false
 }
 
 flutter {

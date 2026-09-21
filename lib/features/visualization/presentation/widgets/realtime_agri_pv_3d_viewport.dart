@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:vector_math/vector_math_64.dart' as v64;
 import '../../engine/scene_3d_controller.dart';
 import '../../engine/farm_model_controller.dart';
+import 'dart:convert';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'three_js_bridge.dart';
 
 class RealtimeAgriPv3dViewport extends StatefulWidget {
   final Scene3dController controller;
@@ -52,6 +55,25 @@ class _RealtimeAgriPv3dViewportState extends State<RealtimeAgriPv3dViewport> {
 
   @override
   Widget build(BuildContext context) {
+    if (kIsWeb) {
+      final config = widget.controller.designConfig;
+      final sun = widget.controller.sunController;
+      
+      final Map<String, dynamic> configMap = {
+        'farmL': 160.0,
+        'farmW': 160.0,
+        'tiltRad': config.panelTilt * (math.pi / 180.0),
+        'spacing': config.rowSpacing * 4.0, // Scaled for visual
+        'stiltH': config.panelHeight * 4.0,
+        'panelW': 4.2 * 4.0,
+        'panelChord': 2.2 * 4.0,
+        'sunAzimuthRad': sun.solarAzimuthRad,
+        'sunElevationRad': sun.solarAltitudeRad,
+      };
+
+      return ThreeJsBridge(configJson: jsonEncode(configMap));
+    }
+
     return GestureDetector(
       onScaleStart: (details) {
         _lastScale = 1.0;
@@ -78,22 +100,91 @@ class _RealtimeAgriPv3dViewportState extends State<RealtimeAgriPv3dViewport> {
         }
       },
       onTap: widget.onTap,
-      child: CustomPaint(
-        size: Size.infinite,
-        painter: _Realtime3dPainter(
-          controller: widget.controller,
-          showSunGizmo: widget.showSunGizmo,
-        ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final size = Size(constraints.maxWidth, constraints.maxHeight);
+          if (size.width == 0 || size.height == 0) return const SizedBox.shrink();
+
+          final cameraMat = widget.controller.cameraController.getTransformMatrix(size);
+          // Rotate the 2D image so it lies flat on the XZ ground plane
+          final imageTransform = cameraMat.clone()..rotateX(math.pi / 2);
+
+          return Stack(
+            children: [
+              // 1. Draw Background Sky
+              CustomPaint(
+                size: Size.infinite,
+                painter: _SkyPainter(
+                  controller: widget.controller,
+                  showSunGizmo: widget.showSunGizmo,
+                ),
+              ),
+              // 2. Draw 3D Satellite Ground Texture
+              Transform(
+                transform: Matrix4.fromFloat64List(imageTransform.storage),
+                alignment: Alignment.topLeft,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Positioned(
+                      left: -208.0, // -terrainWidth / 2
+                      top: -240.0, // -terrainLength / 2
+                      width: 416.0,
+                      height: 480.0,
+                      child: Image.asset(
+                        'assets/images/farm_satellite.jpg',
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // 3. Draw 3D Geometry (Solar Panels, Stilts, Shadows)
+              CustomPaint(
+                size: Size.infinite,
+                painter: _GeometryPainter(
+                  controller: widget.controller,
+                  showSunGizmo: widget.showSunGizmo,
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
 }
 
-class _Realtime3dPainter extends CustomPainter {
+class _SkyPainter extends CustomPainter {
   final Scene3dController controller;
   final bool showSunGizmo;
 
-  _Realtime3dPainter({
+  _SkyPainter({required this.controller, required this.showSunGizmo});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.width <= 0 || size.height <= 0) return;
+    final sun = controller.sunController;
+    
+    final skyPaint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: sun.skyGradient,
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), skyPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _SkyPainter oldDelegate) => true;
+}
+
+class _GeometryPainter extends CustomPainter {
+  final Scene3dController controller;
+  final bool showSunGizmo;
+
+  _GeometryPainter({
     required this.controller,
     required this.showSunGizmo,
   });
@@ -106,21 +197,6 @@ class _Realtime3dPainter extends CustomPainter {
     final camera = controller.cameraController;
     final config = controller.designConfig;
 
-    // -------------------------------------------------------------
-    // 1. DYNAMIC SKY & ATMOSPHERIC GRADIENT
-    // -------------------------------------------------------------
-    final skyPaint = Paint()
-      ..shader = LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: sun.skyGradient,
-      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
-
-    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), skyPaint);
-
-    // -------------------------------------------------------------
-    // 2. SUN GIZMO & CORONA IN THE SKY
-    // -------------------------------------------------------------
     if (showSunGizmo) {
       _drawSunGizmo(canvas, size, sun);
       _drawCompassRose(canvas, size, camera.azimuthRad);
@@ -147,7 +223,8 @@ class _Realtime3dPainter extends CustomPainter {
       bool isBehindCamera = false;
 
       for (final v in poly.vertices) {
-        final v4 = v64.Vector4(v.x, v.y, v.z, 1.0);
+        // Invert Y because 3D world positive Y is UP, but Canvas positive Y is DOWN.
+        final v4 = v64.Vector4(v.x, -v.y, v.z, 1.0);
         v4.applyMatrix4(transformMatrix);
 
         if (v4.w <= 0.12) {
@@ -328,7 +405,7 @@ class _Realtime3dPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _Realtime3dPainter oldDelegate) => true;
+  bool shouldRepaint(covariant _GeometryPainter oldDelegate) => true;
 }
 
 class _ScreenPolygon {

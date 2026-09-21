@@ -100,16 +100,14 @@ class Camera3dController with ChangeNotifier {
     final matrix = v64.Matrix4.identity();
 
     // Center to viewport
-    matrix.translateByVector3(
-      v64.Vector3(
-        viewportSize.width / 2.0 + _panOffset.x,
-        viewportSize.height / 2.0 + _panOffset.y + 12.0,
-        0.0,
-      ),
+    matrix.translate(
+      viewportSize.width / 2.0 + _panOffset.x,
+      viewportSize.height / 2.0 + _panOffset.y + 12.0,
+      0.0,
     );
 
     // Apply zoom
-    matrix.scaleByVector3(v64.Vector3.all(_zoomScale * 0.88));
+    matrix.scale(_zoomScale * 0.88, _zoomScale * 0.88, _zoomScale * 0.88);
 
     // Controlled perspective factor to prevent near plane inversion
     matrix.setEntry(3, 2, 0.0006);

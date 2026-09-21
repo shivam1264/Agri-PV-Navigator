@@ -10,9 +10,6 @@ import '../engine/camera_controller.dart';
 import 'widgets/realtime_agri_pv_3d_viewport.dart';
 import 'widgets/sun_time_slider.dart';
 
-import 'package:provider/provider.dart';
-import '../../../providers/design_provider.dart';
-
 class Ar3dViewScreen extends StatefulWidget {
   const Ar3dViewScreen({super.key});
 
@@ -29,16 +26,6 @@ class _Ar3dViewScreenState extends State<Ar3dViewScreen> {
   void initState() {
     super.initState();
     _sceneController.addListener(_onSceneUpdate);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final active = context.read<DesignProvider>().activeDesign;
-      if (active != null) {
-        final cfg = _sceneController.designConfig;
-        cfg.panelTilt = active.tiltDegrees;
-        cfg.panelHeight = active.panelHeightMeters;
-        cfg.rowSpacing = active.rowSpacingMeters;
-        if (mounted) setState(() {});
-      }
-    });
   }
 
   @override

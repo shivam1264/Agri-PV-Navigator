@@ -8,7 +8,7 @@ class ReportProvider extends ChangeNotifier {
   final ReportRepository _repo = ReportRepository();
   static const _keyDeletedReports = 'agri_pv_deleted_reports_list';
 
-  List<ProposalReport> _reports = [];
+  final List<ProposalReport> _reports = [];
   bool _isLoading = false;
   bool _isGenerating = false;
   String? _error;

@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
@@ -41,6 +42,12 @@ class _FarmLocationScreenState extends State<FarmLocationScreen> {
 
   List<LocationSearchResult> _searchResults = [];
   List<LatLng> _boundaryPoints = [];
+
+  int? _dragIndex;
+  LatLng? _dragCameraCenter;
+  double? _dragCameraZoom;
+  Timer? _areaTimer;
+  bool _manualEdit = false;
 
   @override
   void initState() {
@@ -85,14 +92,69 @@ class _FarmLocationScreenState extends State<FarmLocationScreen> {
         LatLng(_latitude - delta * 0.80, _longitude + delta * 1.10),
         LatLng(_latitude - delta * 0.88, _longitude - delta * 0.80),
       ];
+      _manualEdit = false;
       _areaAcres = GeocodingService.calculatePolygonAreaInAcres(_boundaryPoints);
     });
   }
 
   @override
   void dispose() {
+    _areaTimer?.cancel();
     _searchController.dispose();
     super.dispose();
+  }
+
+  /// Recomputes the acreage 700ms after the last drag ends, i.e. once the
+  /// boundary is judged stable. New drags restart the countdown.
+  void _scheduleAreaRecalc() {
+    _areaTimer?.cancel();
+    _areaTimer = Timer(const Duration(milliseconds: 700), () {
+      if (!mounted) return;
+      setState(() {
+        _areaAcres = GeocodingService.calculatePolygonAreaInAcres(_boundaryPoints);
+      });
+    });
+  }
+
+  /// Midpoint of each edge of the implicitly-closed polygon ring.
+  List<LatLng> _edgeMidpoints() {
+    final n = _boundaryPoints.length;
+    if (n < 2) return const [];
+    return [
+      for (var i = 0; i < n; i++)
+        LatLng(
+          (_boundaryPoints[i].latitude + _boundaryPoints[(i + 1) % n].latitude) / 2,
+          (_boundaryPoints[i].longitude + _boundaryPoints[(i + 1) % n].longitude) / 2,
+        ),
+    ];
+  }
+
+  /// Small distance chip rendered just above edge `i`.
+  Marker _edgeLabel(int i, MapCamera cam) {
+    final n = _boundaryPoints.length;
+    final p1 = _boundaryPoints[i];
+    final p2 = _boundaryPoints[(i + 1) % n];
+    final mid = LatLng((p1.latitude + p2.latitude) / 2, (p1.longitude + p2.longitude) / 2);
+    final labelPoint = cam.screenOffsetToLatLng(cam.latLngToScreenOffset(mid) - const Offset(0, 14));
+    final meters = const Distance().as(LengthUnit.Meter, p1, p2);
+    final text = meters >= 1000 ? '${(meters / 1000).toStringAsFixed(2)} km' : '${meters.round()} m';
+    return Marker(
+      point: labelPoint,
+      width: 54,
+      height: 18,
+      child: Container(
+        alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.65),
+          borderRadius: BorderRadius.circular(9),
+        ),
+        child: Text(
+          text,
+          style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600),
+        ),
+      ),
+    );
   }
 
   /// Desktop web has no GPS: use the current network's IP location;
@@ -262,6 +324,10 @@ class _FarmLocationScreenState extends State<FarmLocationScreen> {
       body: SafeArea(
         child: Column(
           children: [
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
             // Progress Stepper (Step 1: Location)
             ProgressStepper(
               currentStep: 1,
@@ -430,7 +496,8 @@ class _FarmLocationScreenState extends State<FarmLocationScreen> {
             ),
 
             // Real Live Interactive Map View (FlutterMap)
-            Expanded(
+            SizedBox(
+              height: MediaQuery.sizeOf(context).height * 0.52,
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20.0),
                 child: Container(
@@ -457,7 +524,9 @@ class _FarmLocationScreenState extends State<FarmLocationScreen> {
                               setState(() {
                                 _latitude = point.latitude;
                                 _longitude = point.longitude;
-                                _generateBoundaryPoints();
+                                // Preserve any hand-drawn shape; only a tap on a
+                                // fresh (unmodified) boundary regenerates the plot.
+                                if (!_manualEdit) _generateBoundaryPoints();
                               });
                               GeocodingService.reverseGeocode(point.latitude, point.longitude).then((res) {
                                 if (res != null && mounted) {
@@ -468,6 +537,62 @@ class _FarmLocationScreenState extends State<FarmLocationScreen> {
                                   });
                                 }
                               });
+                            },
+                            onPointerDown: (event, point) {
+                              final cam = _mapController.camera;
+                              int? nearest;
+                              double bestDist = 20.0;
+                              for (var i = 0; i < _boundaryPoints.length; i++) {
+                                final off = cam.latLngToScreenOffset(_boundaryPoints[i]);
+                                final d = (off - event.localPosition).distance;
+                                if (d < bestDist) {
+                                  bestDist = d;
+                                  nearest = i;
+                                }
+                              }
+                              // No vertex grabbed: check the mid-edge handles.
+                              // Grabbing one subdivides the edge into two, then
+                              // drags the new corner (edge stays divided).
+                              if (nearest == null && _boundaryPoints.length < 12) {
+                                final mids = _edgeMidpoints();
+                                for (var i = 0; i < mids.length; i++) {
+                                  final off = cam.latLngToScreenOffset(mids[i]);
+                                  if ((off - event.localPosition).distance < 18) {
+                                    nearest = i + 1;
+                                    _boundaryPoints.insert(i + 1, point);
+                                    break;
+                                  }
+                                }
+                              }
+                              if (nearest != null) {
+                                setState(() {
+                                  _dragIndex = nearest;
+                                  _dragCameraCenter = cam.center;
+                                  _dragCameraZoom = cam.zoom;
+                                  _boundaryPoints[nearest!] = point;
+                                  _manualEdit = true;
+                                });
+                                _areaTimer?.cancel();
+                              }
+                            },
+                            onPointerMove: (event, point) {
+                              if (_dragIndex == null) return;
+                              setState(() => _boundaryPoints[_dragIndex!] = point);
+                              if (_dragCameraCenter != null) {
+                                _mapController.move(_dragCameraCenter!, _dragCameraZoom!);
+                              }
+                            },
+                            onPointerUp: (event, point) {
+                              if (_dragIndex == null) return;
+                              setState(() {
+                                _boundaryPoints[_dragIndex!] = point;
+                                _dragIndex = null;
+                              });
+                              _scheduleAreaRecalc();
+                            },
+                            onPointerCancel: (event, point) {
+                              _dragIndex = null;
+                              _scheduleAreaRecalc();
                             },
                           ),
                           children: [
@@ -520,6 +645,41 @@ class _FarmLocationScreenState extends State<FarmLocationScreen> {
                                 ],
                               ),
 
+                            // Mid-edge handles: drag one to add a corner there
+                            if (_boundaryPoints.length >= 3)
+                              MarkerLayer(
+                                markers: [
+                                  for (final mid in _edgeMidpoints())
+                                    Marker(
+                                      point: mid,
+                                      width: 16,
+                                      height: 16,
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          shape: BoxShape.circle,
+                                          border: Border.all(color: const Color(0xFF15803D), width: 1.5),
+                                          boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 2)],
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+
+                            // Edge distance labels (lifted just above each edge)
+                            if (_boundaryPoints.length >= 2)
+                              Builder(builder: (context) {
+                                // Safe inside FlutterMap: the camera is
+                                // guaranteed attached in this subtree.
+                                final cam = MapCamera.of(context);
+                                return MarkerLayer(
+                                  markers: [
+                                    for (var i = 0; i < _boundaryPoints.length; i++)
+                                      _edgeLabel(i, cam),
+                                  ],
+                                );
+                              }),
+
                             // Corner Boundary Marker Pins
                             MarkerLayer(
                               markers: _boundaryPoints.asMap().entries.map((entry) {
@@ -553,7 +713,7 @@ class _FarmLocationScreenState extends State<FarmLocationScreen> {
                           ],
                         ),
 
-                        // Map Controls (Zoom In, Zoom Out)
+                        // Map Controls (Zoom In, Zoom Out, Reset Boundary)
                         Positioned(
                           top: 12,
                           right: 12,
@@ -568,6 +728,11 @@ class _FarmLocationScreenState extends State<FarmLocationScreen> {
                                 final zoom = _mapController.camera.zoom - 0.5;
                                 _mapController.move(_mapController.camera.center, zoom);
                               }),
+                              const SizedBox(height: 6),
+                              _buildMapButton(Icons.restart_alt_rounded, () {
+                                _areaTimer?.cancel();
+                                _generateBoundaryPoints();
+                              }, tooltip: 'Reset boundary'),
                             ],
                           ),
                         ),
@@ -586,8 +751,8 @@ class _FarmLocationScreenState extends State<FarmLocationScreen> {
                               children: [
                                 Icon(Icons.touch_app_outlined, color: Colors.white, size: 14),
                                 SizedBox(width: 4),
-                                Text(
-                                  'Tap map to set farm boundary',
+Text(
+                                  'Drag numbered pins to reshape; drag white dots to add a corner',
                                   style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w500),
                                 ),
                               ],
@@ -674,13 +839,21 @@ class _FarmLocationScreenState extends State<FarmLocationScreen> {
                         final stateClean = _stateName.contains(',') ? _stateName.split(',').first.trim() : _stateName;
                         final districtClean = _locationName.contains(',') ? _locationName.split(',').first.trim() : _locationName;
 
-                        // Save real live coordinates and calculated acreage
+                        // Guarantee exact acreage for whatever shape was last drawn,
+                        // even if the 700ms debounce hasn't fired yet.
+                        _areaTimer?.cancel();
+                        _areaAcres = GeocodingService.calculatePolygonAreaInAcres(_boundaryPoints);
+
+                        // Save real live coordinates, drawn boundary & calculated acreage
                         context.read<FarmProvider>().updateDraftLocation(
                           latitude: _latitude,
                           longitude: _longitude,
                           state: stateClean,
                           district: districtClean,
                           areaAcres: _areaAcres,
+                          boundaryPoints: [
+                            for (final p in _boundaryPoints) [p.latitude, p.longitude],
+                          ],
                         );
                         context.go('/farm-details');
                       },
@@ -688,6 +861,10 @@ class _FarmLocationScreenState extends State<FarmLocationScreen> {
                     ),
                   ),
                 ],
+              ),
+            ),
+                  ],
+                ),
               ),
             ),
 

@@ -30,6 +30,7 @@ class FarmBoundaryPainter extends CustomPainter {
     canvas.translate(w / 2, h / 2);
     canvas.scale(zoomScale, zoomScale);
     canvas.translate(-w / 2, -h / 2);
+    try {
 
     // 1. Draw Satellite Landscape Background if enabled
     if (drawBackground) {
@@ -77,6 +78,7 @@ class FarmBoundaryPainter extends CustomPainter {
 
     // 2. Main Farm Polygon Coordinates
     if (points.isEmpty) return;
+    if (points.any((p) => !p.dx.isFinite || !p.dy.isFinite)) return;
 
     final polygonPath = Path()..moveTo(points[0].dx, points[0].dy);
     for (int i = 1; i < points.length; i++) {
@@ -174,8 +176,9 @@ class FarmBoundaryPainter extends CustomPainter {
       canvas,
       Offset(center.dx - textPainter.width / 2, center.dy - textPainter.height / 2),
     );
-
-    canvas.restore();
+    } finally {
+      canvas.restore();
+    }
   }
 
   @override

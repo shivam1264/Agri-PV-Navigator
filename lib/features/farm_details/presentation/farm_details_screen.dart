@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_text_field.dart';
 import '../../../shared/widgets/app_dropdown.dart';
+import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/progress_stepper.dart';
 import '../../../shared/widgets/bottom_nav_bar.dart';
 import 'package:provider/provider.dart';
@@ -61,6 +63,69 @@ class _FarmDetailsScreenState extends State<FarmDetailsScreen> {
     super.dispose();
   }
 
+  Widget _mappingSummaryCard({
+    required int corners,
+    required double? areaAcres,
+    required String? district,
+    required String? state,
+    required double? lat,
+    required double? lng,
+    required ThemeData theme,
+    required bool isDark,
+  }) {
+    final titleColor = isDark ? const Color(0xFFF1F5F9) : AppColors.textPrimary;
+    final subColor = isDark ? const Color(0xFF94A3B8) : AppColors.textSecondary;
+    final coords = (lat != null && lng != null) ? '${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}' : null;
+
+    return AppCard(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.auto_awesome, size: 16, color: AppColors.primary),
+              const SizedBox(width: 8),
+              Text('Land Mapping Summary', style: AppTypography.cardTitle.copyWith(fontSize: 14)),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _summaryRow(Icons.location_city_rounded, 'Region', (district?.isNotEmpty ?? false) ? district! : '—', titleColor, subColor),
+          if (state != null && state.isNotEmpty) _summaryRow(Icons.map_rounded, 'State', state, titleColor, subColor),
+          _summaryRow(Icons.crop_landscape_rounded, 'Mapped Area', areaAcres != null ? '${areaAcres.toStringAsFixed(2)} acres' : '—', titleColor, subColor,
+              accent: AppColors.primary),
+          _summaryRow(Icons.polyline_rounded, 'Boundary Corners', '$corners', titleColor, subColor),
+          if (coords != null) _summaryRow(Icons.gps_fixed_rounded, 'Coordinates', coords, titleColor, subColor),
+        ],
+      ),
+    );
+  }
+
+  Widget _summaryRow(IconData icon, String label, String value, Color titleColor, Color subColor, {Color? accent}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Icon(icon, size: 15, color: accent ?? subColor),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              label,
+              style: AppTypography.labelSmall.copyWith(color: subColor),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            value,
+            style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: accent ?? titleColor),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _onNext() async {
     final farmProv = context.read<FarmProvider>();
     final areaVal = double.tryParse(_areaController.text.trim()) ?? 2.35;
@@ -104,6 +169,17 @@ class _FarmDetailsScreenState extends State<FarmDetailsScreen> {
     final farmProv = context.watch<FarmProvider>();
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+
+    // Values auto-filled from the land mapping done on the location screen
+    final draftMap = farmProv.draftFarm;
+    final rawBoundary = draftMap['boundaryPoints'];
+    final mappedCorners = rawBoundary is List ? rawBoundary.length : 0;
+    final areaFromMapping = draftMap['areaFromMapping'] == true;
+    final mappedLat = (draftMap['latitude'] as num?)?.toDouble();
+    final mappedLng = (draftMap['longitude'] as num?)?.toDouble();
+    final mappedDistrict = (draftMap['district'] as String?)?.trim();
+    final mappedState = draftMap['state'] as String?;
+    final mappedArea = (draftMap['areaAcres'] as num?)?.toDouble();
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -156,6 +232,21 @@ class _FarmDetailsScreenState extends State<FarmDetailsScreen> {
                     ),
                     const SizedBox(height: 20),
 
+                    // Land Mapping Summary (auto-filled from location screen)
+                    if (mappedCorners > 0) ...[
+                      _mappingSummaryCard(
+                        corners: mappedCorners,
+                        areaAcres: mappedArea,
+                        district: mappedDistrict,
+                        state: mappedState,
+                        lat: mappedLat,
+                        lng: mappedLng,
+                        theme: theme,
+                        isDark: isDark,
+                      ),
+                      const SizedBox(height: 20),
+                    ],
+
                     // Farm Name Input
                     AppTextField(
                       label: 'Farm Name',
@@ -172,6 +263,27 @@ class _FarmDetailsScreenState extends State<FarmDetailsScreen> {
                       controller: _areaController,
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       prefixIcon: Icons.crop_landscape_rounded,
+                      suffix: areaFromMapping
+                          ? Container(
+                              margin: const EdgeInsets.only(right: 12),
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.link_rounded, size: 12, color: AppColors.primary),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    'From boundary',
+                                    style: TextStyle(fontSize: 10, color: AppColors.primary, fontWeight: FontWeight.w700),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : null,
                     ),
                     const SizedBox(height: 16),
 

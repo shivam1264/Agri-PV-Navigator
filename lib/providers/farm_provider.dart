@@ -49,7 +49,17 @@ class FarmProvider extends ChangeNotifier {
       gridProximityKm: (_draftFarm['gridProximityKm'] as num?)?.toDouble() ?? 2.4,
       latitude: (_draftFarm['latitude'] as num?)?.toDouble() ?? 25.4358,
       longitude: (_draftFarm['longitude'] as num?)?.toDouble() ?? 81.8463,
+      boundary: _draftBoundary,
     );
+  }
+
+  List<List<double>> get _draftBoundary {
+    final raw = _draftFarm['boundaryPoints'];
+    if (raw is! List) return const [];
+    return raw
+        .whereType<List>()
+        .map((e) => e.whereType<num>().map((n) => n.toDouble()).toList())
+        .toList();
   }
 
   void selectFarm(Farm farm) {
@@ -70,12 +80,17 @@ class FarmProvider extends ChangeNotifier {
     String? state,
     String? district,
     double? areaAcres,
+    List<List<double>>? boundaryPoints,
   }) {
     _draftFarm['latitude'] = latitude;
     _draftFarm['longitude'] = longitude;
     if (state != null) _draftFarm['state'] = state;
     if (district != null) _draftFarm['district'] = district;
     if (areaAcres != null) _draftFarm['areaAcres'] = areaAcres;
+    if (boundaryPoints != null) {
+      _draftFarm['boundaryPoints'] = boundaryPoints;
+      _draftFarm['areaFromMapping'] = true;
+    }
     notifyListeners();
   }
 
@@ -169,6 +184,7 @@ class FarmProvider extends ChangeNotifier {
       irrigation: irrVal,
       gridProximityKm: gridVal,
       suitabilityScore: 85,
+      boundary: _draftBoundary,
     );
 
     try {
@@ -187,6 +203,7 @@ class FarmProvider extends ChangeNotifier {
         irrigationSource: _draftFarm['irrigationSource'],
         electricityTariff: (_draftFarm['electricityTariff'] as num?)?.toDouble(),
         surveyNumber: _draftFarm['surveyNumber'],
+        boundary: _draftBoundary,
       );
       farmResult = serverFarm;
     } catch (e) {

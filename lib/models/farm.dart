@@ -35,6 +35,7 @@ class Farm {
   final String imagePath;
   final double? latitude;
   final double? longitude;
+  final List<List<double>> boundary;
 
   const Farm({
     required this.id,
@@ -54,6 +55,7 @@ class Farm {
     this.imagePath = 'assets/images/farm_wheat.jpg',
     this.latitude,
     this.longitude,
+    this.boundary = const [],
   });
 
   String get suitabilityLabel {
@@ -85,6 +87,24 @@ class Farm {
       parsedCoords = rawCoordinates.map((e) => e.toString()).toList();
     }
 
+    List<List<double>> parsedBoundary = [];
+    final rawBoundary = data['boundary'];
+    if (rawBoundary is Map) {
+      // Accept GeoJSON Polygon: boundary.coordinates[0] = ring of [lng, lat]
+      final coords = rawBoundary['coordinates'];
+      if (coords is List && coords.isNotEmpty && (coords[0] is List)) {
+        parsedBoundary = ((coords[0]) as List)
+            .whereType<List>()
+            .map((e) => <double>[(e[1] as num).toDouble(), (e[0] as num).toDouble()])
+            .toList();
+      }
+    } else if (rawBoundary is List) {
+      parsedBoundary = rawBoundary
+          .whereType<List>()
+          .map((e) => e.whereType<num>().map((n) => n.toDouble()).toList())
+          .toList();
+    }
+
     final idVal = (data['id'] ?? data['_id'] ?? '').toString();
 
     return Farm(
@@ -105,6 +125,7 @@ class Farm {
       imagePath: data['imagePath'] ?? 'assets/images/farm_wheat.jpg',
       latitude: lat,
       longitude: lng,
+      boundary: parsedBoundary,
     );
   }
 
@@ -129,6 +150,7 @@ class Farm {
       'imagePath': imagePath,
       'latitude': latitude,
       'longitude': longitude,
+      'boundary': boundary,
     };
   }
 
@@ -150,6 +172,7 @@ class Farm {
     String? imagePath,
     double? latitude,
     double? longitude,
+    List<List<double>>? boundary,
   }) {
     return Farm(
       id: id ?? this.id,
@@ -169,6 +192,7 @@ class Farm {
       imagePath: imagePath ?? this.imagePath,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
+      boundary: boundary ?? this.boundary,
     );
   }
 }

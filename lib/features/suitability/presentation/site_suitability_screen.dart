@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/app_button.dart';
@@ -8,10 +10,10 @@ import '../../../shared/widgets/progress_stepper.dart';
 import '../../../shared/widgets/factor_card.dart';
 import '../../../shared/widgets/bottom_nav_bar.dart';
 import '../../../shared/painters/score_arc_painter.dart';
-import '../../../shared/painters/farm_boundary_painter.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/suitability_provider.dart';
 import '../../../providers/farm_provider.dart';
+import '../../../models/farm.dart';
 import '../../../services/calculation/agri_pv_calculation_service.dart';
 
 class SiteSuitabilityScreen extends StatefulWidget {
@@ -61,6 +63,26 @@ class _SiteSuitabilityScreenState extends State<SiteSuitabilityScreen> {
           ),
         ),
         centerTitle: true,
+        actions: [
+          if (suitProv.isLoading)
+            const Padding(
+              padding: EdgeInsets.only(right: 20),
+              child: Center(
+                child: SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
+            ),
+          IconButton(
+            icon: Icon(Icons.refresh_rounded, color: isDark ? Colors.white : const Color(0xFF0F172A)),
+            tooltip: 'Recalculate from server',
+            onPressed: () => context
+                .read<SuitabilityProvider>()
+                .recalculateSuitability(farm.id, fallbackFarm: farm),
+          ),
+        ],
       ),
       body: SafeArea(
         child: Column(
@@ -88,9 +110,9 @@ class _SiteSuitabilityScreenState extends State<SiteSuitabilityScreen> {
                     ),
                     const SizedBox(height: 12),
 
-                    // Farm Map Preview Banner with "Your Farm" tag
+                    // Live Map Preview of the mapped parcel (read-only, pan/zoom)
                     Container(
-                      height: 120,
+                      height: 180,
                       width: double.infinity,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(16),
@@ -101,38 +123,79 @@ class _SiteSuitabilityScreenState extends State<SiteSuitabilityScreen> {
                         child: Stack(
                           children: [
                             Positioned.fill(
-                              child: Image.asset(
-                                'assets/images/satellite_map.jpg',
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                            Positioned.fill(
-                              child: CustomPaint(
-                                painter: FarmBoundaryPainter(
-                                  areaAcres: farm.areaAcres,
-                                  showPins: false,
-                                  drawBackground: false,
+                              child: FlutterMap(
+                                options: MapOptions(
+                                  initialCenter: _farmCenter(farm),
+                                  initialZoom: 16.0,
+                                  maxZoom: 19.0,
+                                  minZoom: 4.0,
                                 ),
+                                children: [
+                                  TileLayer(
+                                    urlTemplate: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+                                    maxZoom: 19,
+                                  ),
+                                  if (_farmPolygon(farm.boundary).length >= 3)
+                                    PolygonLayer(
+                                      polygons: [
+                                        Polygon(
+                                          points: _farmPolygon(farm.boundary),
+                                          holePointsList: const [],
+                                          color: const Color(0xFF22C55E).withValues(alpha: 0.30),
+                                          borderColor: const Color(0xFF15803D),
+                                          borderStrokeWidth: 2.5,
+                                        ),
+                                      ],
+                                    ),
+                                ],
                               ),
                             ),
                             Positioned(
                               top: 10,
                               left: 10,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withValues(alpha: 0.65),
-                                  borderRadius: BorderRadius.circular(20),
+                              child: GestureDetector(
+                                onTap: () => context.go('/farm-location'),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withValues(alpha: 0.65),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.location_on, color: Colors.white, size: 13),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        '${farm.name} (${farm.location})',
+                                        style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                                child: Row(
-                                  children: [
-                                    const Icon(Icons.location_on, color: Colors.white, size: 13),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      '${farm.name} (${farm.location})',
-                                      style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
-                                    ),
-                                  ],
+                              ),
+                            ),
+                            Positioned(
+                              top: 10,
+                              right: 10,
+                              child: GestureDetector(
+                                onTap: () => context.go('/farm-location'),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withValues(alpha: 0.65),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.edit_location_alt_rounded, color: Colors.white, size: 12),
+                                      SizedBox(width: 4),
+                                      Text(
+                                        'Edit boundary',
+                                        style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
@@ -246,6 +309,7 @@ class _SiteSuitabilityScreenState extends State<SiteSuitabilityScreen> {
 
                     ...assessment.factors.map((factor) => FactorCard(
                       factor: factor,
+                      weightPercent: _factorWeights[factor.id],
                     )),
                     const SizedBox(height: 16),
 
@@ -327,4 +391,29 @@ class _SiteSuitabilityScreenState extends State<SiteSuitabilityScreen> {
       ),
     );
   }
+}
+
+const _factorWeights = {'f1': 25, 'f2': 15, 'f3': 15, 'f4': 15, 'f5': 20, 'f6': 10};
+
+LatLng _farmCenter(Farm farm) {
+  final poly = _farmPolygon(farm.boundary);
+  if (poly.isNotEmpty) {
+    var lat = 0.0, lng = 0.0;
+    for (final p in poly) {
+      lat += p.latitude;
+      lng += p.longitude;
+    }
+    return LatLng(lat / poly.length, lng / poly.length);
+  }
+  if (farm.latitude != null && farm.longitude != null) {
+    return LatLng(farm.latitude!, farm.longitude!);
+  }
+  return const LatLng(25.4358, 81.8463);
+}
+
+List<LatLng> _farmPolygon(List<List<double>> boundary) {
+  return [
+    for (final p in boundary)
+      if (p.length >= 2) LatLng(p[0], p[1]),
+  ];
 }

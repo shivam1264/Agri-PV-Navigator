@@ -43,6 +43,7 @@ class FarmRepository {
     String? irrigationSource,
     double? electricityTariff,
     String? surveyNumber,
+    List<List<double>>? boundary,
   }) async {
     final body = {
       'name': name,
@@ -64,6 +65,18 @@ class FarmRepository {
       'irrigationSource': ?irrigationSource,
       'electricityTariff': ?electricityTariff,
       'surveyNumber': ?surveyNumber,
+      'boundary': ?(boundary != null && boundary.isNotEmpty
+          ? {
+              'type': 'Polygon',
+              // Closed ring of [lng, lat] pairs from the [lat, lng] input
+              'coordinates': [
+                [
+                  for (final p in boundary) [p[1], p[0]],
+                  [boundary.first[1], boundary.first[0]],
+                ]
+              ],
+            }
+          : null),
     };
 
     final response = await _client.post('/api/farms', body: body);

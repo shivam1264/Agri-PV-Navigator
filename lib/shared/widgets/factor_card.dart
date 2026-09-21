@@ -3,30 +3,75 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../models/suitability_factor.dart';
 
-class FactorCard extends StatelessWidget {
+class FactorCard extends StatefulWidget {
   final SuitabilityFactor factor;
+  final int? weightPercent;
 
   const FactorCard({
     super.key,
     required this.factor,
+    this.weightPercent,
   });
+
+  @override
+  State<FactorCard> createState() => _FactorCardState();
+}
+
+class _FactorCardState extends State<FactorCard> {
+  bool _expanded = false;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final factor = widget.factor;
+    final weight = widget.weightPercent;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      decoration: BoxDecoration(
-        color: isDark ? theme.cardColor : AppColors.surface,
+    Widget expandedBody; // hoisted only to satisfy the widget tree layout below
+    expandedBody = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 12),
+        Divider(color: isDark ? theme.dividerColor : AppColors.borderLight, height: 1),
+        const SizedBox(height: 10),
+        _detailRow('Measured', factor.metricValue, isDark),
+        _detailRow('Assessment', factor.fullAssessment, isDark),
+        _detailRow('Impact', factor.impact, isDark),
+        if (weight != null) ...[
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              const Icon(Icons.tune_rounded, size: 13, color: AppColors.textSecondary),
+              const SizedBox(width: 6),
+              Text(
+                'Weight: $weight% of overall score',
+                style: AppTypography.labelSmall.copyWith(
+                  fontSize: 11,
+                  color: isDark ? const Color(0xFF94A3B8) : AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ],
+    );
+
+    return Material(
+      color: isDark ? theme.cardColor : AppColors.surface,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: isDark ? theme.dividerColor : AppColors.border,
-          width: 1.0,
-        ),
-      ),
-      child: Padding(
+        onTap: () => setState(() => _expanded = !_expanded),
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 10),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: isDark ? theme.dividerColor : AppColors.border,
+              width: 1.0,
+            ),
+          ),
+          child: Padding(
             padding: const EdgeInsets.all(14.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -69,7 +114,7 @@ class FactorCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    // Score e.g. 85 / 100
+                    // Score e.g. 85 / 100 + expand chevron
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
@@ -111,6 +156,12 @@ class FactorCard extends StatelessWidget {
                         ),
                       ],
                     ),
+                    const SizedBox(width: 6),
+                    Icon(
+                      _expanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
+                      size: 18,
+                      color: isDark ? const Color(0xFF94A3B8) : AppColors.textTertiary,
+                    ),
                   ],
                 ),
                 // Progress bar
@@ -130,9 +181,39 @@ class FactorCard extends StatelessWidget {
                     minHeight: 5,
                   ),
                 ),
+                if (_expanded) expandedBody,
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _detailRow(String label, String value, bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 78,
+            child: Text(
+              label,
+              style: AppTypography.labelSmall.copyWith(
+                fontSize: 11,
+                color: isDark ? const Color(0xFF94A3B8) : AppColors.textSecondary,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: AppTypography.bodySmall.copyWith(fontSize: 12.5),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

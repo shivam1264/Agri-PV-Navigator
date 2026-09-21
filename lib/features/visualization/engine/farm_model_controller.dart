@@ -45,48 +45,9 @@ class FarmModelController {
     final sunShadowFactor = sun.groundShadowProjectionFactor;
 
     // -------------------------------------------------------------
-    // 1. TERRAIN (Lush Grass Perimeter + Loamy Cultivated Field)
+    // 1. TERRAIN (Now rendered via Photorealistic Satellite Image in Viewport)
     // -------------------------------------------------------------
-    // Outer Grass Parcel Base
-    polygons.add(Polygon3d(
-      vertices: [
-        v64.Vector3(-halfW, 0.0, -halfL),
-        v64.Vector3(halfW, 0.0, -halfL),
-        v64.Vector3(halfW, 0.0, halfL),
-        v64.Vector3(-halfW, 0.0, halfL),
-      ],
-      normal: v64.Vector3(0.0, 1.0, 0.0),
-      baseColor: const Color(0xFF689F38), // Lush perimeter grass
-    ));
-
-    // Inner Loamy Cultivated Soil Field
-    final soilW = halfW * 0.88;
-    final soilL = halfL * 0.90;
-    polygons.add(Polygon3d(
-      vertices: [
-        v64.Vector3(-soilW, 0.15, -soilL),
-        v64.Vector3(soilW, 0.15, -soilL),
-        v64.Vector3(soilW, 0.15, soilL),
-        v64.Vector3(-soilW, 0.15, soilL),
-      ],
-      normal: v64.Vector3(0.0, 1.0, 0.0),
-      baseColor: const Color(0xFF5D4037), // Rich loamy agricultural soil
-    ));
-
-    // Textured Ridges & Furrows
-    for (int i = -8; i <= 8; i++) {
-      final z = i * (soilL * 2.0 / 18.0);
-      polygons.add(Polygon3d(
-        vertices: [
-          v64.Vector3(-soilW * 0.95, 0.28, z - 2.5),
-          v64.Vector3(soilW * 0.95, 0.28, z - 2.5),
-          v64.Vector3(soilW * 0.95, 0.28, z + 2.5),
-          v64.Vector3(-soilW * 0.95, 0.28, z + 2.5),
-        ],
-        normal: v64.Vector3(0.0, 1.0, 0.0),
-        baseColor: const Color(0xFF4E342E), // Dark furrow shadow
-      ));
-    }
+    // Generic solid polygons removed to reveal the satellite texture.
 
     // -------------------------------------------------------------
     // 2. ACCESS ROAD & IRRIGATION SYSTEM

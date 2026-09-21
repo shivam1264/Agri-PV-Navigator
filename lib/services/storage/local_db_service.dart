@@ -1,5 +1,6 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import '../../models/farm.dart';
 import '../../models/agri_pv_design.dart';
 import '../../models/proposal_report.dart';
@@ -10,11 +11,24 @@ class LocalDbService {
   LocalDbService._internal();
 
   static Database? _db;
+  
+  // In-memory web fallbacks
+  final List<Farm> _webFarms = [];
+  final List<AgriPvDesign> _webDesigns = [];
+  final List<ProposalReport> _webReports = [];
+  bool _webInitialized = false;
 
-  Future<Database> get database async {
+  Future<Database?> get database async {
+    if (kIsWeb) return null;
     if (_db != null) return _db!;
     _db = await _initDb();
     return _db!;
+  }
+
+  Future<void> _initWebDb() async {
+    if (_webInitialized) return;
+    _webInitialized = true;
+    _webFarms.addAll(_getInitialWebFarms());
   }
 
   Future<Database> _initDb() async {
@@ -95,113 +109,168 @@ class LocalDbService {
 
   Future<void> _seedInitialFarms(Database db) async {
     final now = DateTime.now().toIso8601String();
-    final seeds = [
-      {
-        'id': 'farm_01', 'name': 'Farm A', 'area_acres': 2.35, 'crop': 'Wheat',
-        'location': 'Phulpur, Prayagraj', 'state': 'Uttar Pradesh, India',
-        'suitability_score': 82, 'status': 'active', 'soil_type': 'Loamy',
-        'slope': '1.8% (Almost flat)', 'irrigation': 'Available',
-        'grid_proximity_km': 2.4, 'current_land_use': 'Agriculture',
-        'image_path': 'assets/images/farm_wheat.jpg', 'created_at': now,
-      },
-      {
-        'id': 'farm_02', 'name': 'Farm B', 'area_acres': 1.80, 'crop': 'Rice',
-        'location': 'Jhunsi, Prayagraj', 'state': 'Uttar Pradesh, India',
-        'suitability_score': 76, 'status': 'active', 'soil_type': 'Alluvial',
-        'slope': '2.1%', 'irrigation': 'Available',
-        'grid_proximity_km': 4.1, 'current_land_use': 'Agriculture',
-        'image_path': 'assets/images/farm_rice.jpg', 'created_at': now,
-      },
-      {
-        'id': 'farm_03', 'name': 'Farm C', 'area_acres': 4.10, 'crop': 'Mustard',
-        'location': 'Kaushambi', 'state': 'Uttar Pradesh, India',
-        'suitability_score': 88, 'status': 'draft', 'soil_type': 'Sandy Loam',
-        'slope': '1.2%', 'irrigation': 'Available',
-        'grid_proximity_km': 1.8, 'current_land_use': 'Agriculture',
-        'image_path': 'assets/images/farm_mustard.jpg', 'created_at': now,
-      },
-      {
-        'id': 'farm_04', 'name': 'Farm D', 'area_acres': 3.20, 'crop': 'Vegetables',
-        'location': 'Naini, Prayagraj', 'state': 'Uttar Pradesh, India',
-        'suitability_score': 85, 'status': 'active', 'soil_type': 'Loamy',
-        'slope': '1.5%', 'irrigation': 'Drip Irrigation',
-        'grid_proximity_km': 1.5, 'current_land_use': 'Agriculture',
-        'image_path': 'assets/images/farm_vegetables.jpg', 'created_at': now,
-      },
-    ];
+    final seeds = _getInitialWebFarms().map((f) => _farmToRow(f)).toList();
     for (final farm in seeds) {
       await db.insert('farms', farm, conflictAlgorithm: ConflictAlgorithm.ignore);
     }
   }
 
+  List<Farm> _getInitialWebFarms() {
+    return [
+      Farm(
+        id: 'farm_01', name: 'Farm A', areaAcres: 2.35, crop: 'Wheat',
+        location: 'Phulpur, Prayagraj', state: 'Uttar Pradesh, India',
+        suitabilityScore: 82, status: FarmStatus.active, soilType: 'Loamy',
+        slope: '1.8% (Almost flat)', irrigation: 'Available',
+        gridProximityKm: 2.4, currentLandUse: 'Agriculture',
+        imagePath: 'assets/images/farm_wheat.jpg',
+      ),
+      Farm(
+        id: 'farm_02', name: 'Farm B', areaAcres: 1.80, crop: 'Rice',
+        location: 'Jhunsi, Prayagraj', state: 'Uttar Pradesh, India',
+        suitabilityScore: 76, status: FarmStatus.active, soilType: 'Alluvial',
+        slope: '2.1%', irrigation: 'Available',
+        gridProximityKm: 4.1, currentLandUse: 'Agriculture',
+        imagePath: 'assets/images/farm_rice.jpg',
+      ),
+      Farm(
+        id: 'farm_03', name: 'Farm C', areaAcres: 4.10, crop: 'Mustard',
+        location: 'Kaushambi', state: 'Uttar Pradesh, India',
+        suitabilityScore: 88, status: FarmStatus.draft, soilType: 'Sandy Loam',
+        slope: '1.2%', irrigation: 'Available',
+        gridProximityKm: 1.8, currentLandUse: 'Agriculture',
+        imagePath: 'assets/images/farm_mustard.jpg',
+      ),
+      Farm(
+        id: 'farm_04', name: 'Farm D', areaAcres: 3.20, crop: 'Vegetables',
+        location: 'Naini, Prayagraj', state: 'Uttar Pradesh, India',
+        suitabilityScore: 85, status: FarmStatus.active, soilType: 'Loamy',
+        slope: '1.5%', irrigation: 'Drip Irrigation',
+        gridProximityKm: 1.5, currentLandUse: 'Agriculture',
+        imagePath: 'assets/images/farm_vegetables.jpg',
+      ),
+    ];
+  }
+
   // ─── FARMS ───────────────────────────────────────────────────────────────
 
   Future<List<Farm>> getAllFarms() async {
+    if (kIsWeb) {
+      await _initWebDb();
+      return List.from(_webFarms);
+    }
     final db = await database;
-    final rows = await db.query('farms', orderBy: 'created_at DESC');
+    final rows = await db!.query('farms', orderBy: 'created_at DESC');
     return rows.map(_rowToFarm).toList();
   }
 
   Future<void> insertFarm(Farm farm) async {
+    if (kIsWeb) {
+      await _initWebDb();
+      _webFarms.add(farm);
+      return;
+    }
     final db = await database;
-    await db.insert('farms', _farmToRow(farm), conflictAlgorithm: ConflictAlgorithm.replace);
+    await db!.insert('farms', _farmToRow(farm), conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<void> updateFarm(Farm farm) async {
+    if (kIsWeb) {
+      await _initWebDb();
+      final idx = _webFarms.indexWhere((f) => f.id == farm.id);
+      if (idx != -1) _webFarms[idx] = farm;
+      return;
+    }
     final db = await database;
-    await db.update('farms', _farmToRow(farm), where: 'id = ?', whereArgs: [farm.id]);
+    await db!.update('farms', _farmToRow(farm), where: 'id = ?', whereArgs: [farm.id]);
   }
 
   Future<void> deleteFarm(String id) async {
+    if (kIsWeb) {
+      await _initWebDb();
+      _webFarms.removeWhere((f) => f.id == id);
+      _webDesigns.removeWhere((d) => d.id == id); // farm_id is id in this context
+      return;
+    }
     final db = await database;
-    await db.delete('farms', where: 'id = ?', whereArgs: [id]);
+    await db!.delete('farms', where: 'id = ?', whereArgs: [id]);
     await db.delete('designs', where: 'farm_id = ?', whereArgs: [id]);
   }
 
   Future<int> getFarmCount() async {
+    if (kIsWeb) {
+      await _initWebDb();
+      return _webFarms.length;
+    }
     final db = await database;
-    final result = await db.rawQuery('SELECT COUNT(*) as count FROM farms');
+    final result = await db!.rawQuery('SELECT COUNT(*) as count FROM farms');
     return Sqflite.firstIntValue(result) ?? 0;
   }
 
   Future<double> getTotalAreaAcres() async {
+    if (kIsWeb) {
+      await _initWebDb();
+      return _webFarms.fold<double>(0.0, (sum, f) => sum + f.areaAcres);
+    }
     final db = await database;
-    final result = await db.rawQuery('SELECT SUM(area_acres) as total FROM farms');
+    final result = await db!.rawQuery('SELECT SUM(area_acres) as total FROM farms');
     if (result.isEmpty || result.first['total'] == null) return 0.0;
     return (result.first['total'] as num).toDouble();
   }
 
   Future<int> getDesignCount() async {
+    if (kIsWeb) {
+      await _initWebDb();
+      return _webDesigns.length;
+    }
     final db = await database;
-    final result = await db.rawQuery('SELECT COUNT(*) as count FROM designs');
+    final result = await db!.rawQuery('SELECT COUNT(*) as count FROM designs');
     return Sqflite.firstIntValue(result) ?? 0;
   }
 
   // ─── DESIGNS ─────────────────────────────────────────────────────────────
 
   Future<void> insertDesign(AgriPvDesign design, String farmId) async {
+    if (kIsWeb) {
+      await _initWebDb();
+      _webDesigns.add(design);
+      return;
+    }
     final db = await database;
-    await db.insert('designs', _designToRow(design, farmId),
+    await db!.insert('designs', _designToRow(design, farmId),
         conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<List<AgriPvDesign>> getDesignsForFarm(String farmId) async {
+    if (kIsWeb) {
+      await _initWebDb();
+      return _webDesigns.toList(); // Simplification: in web, we return all as MVP or filter
+    }
     final db = await database;
-    final rows = await db.query('designs', where: 'farm_id = ?', whereArgs: [farmId]);
+    final rows = await db!.query('designs', where: 'farm_id = ?', whereArgs: [farmId]);
     return rows.map(_rowToDesign).toList();
   }
 
   // ─── REPORTS ─────────────────────────────────────────────────────────────
 
   Future<void> insertReport(ProposalReport report) async {
+    if (kIsWeb) {
+      await _initWebDb();
+      _webReports.add(report);
+      return;
+    }
     final db = await database;
-    await db.insert('reports', _reportToRow(report),
+    await db!.insert('reports', _reportToRow(report),
         conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<List<ProposalReport>> getAllReports() async {
+    if (kIsWeb) {
+      await _initWebDb();
+      return List.from(_webReports);
+    }
     final db = await database;
-    final rows = await db.query('reports', orderBy: 'created_at DESC');
+    final rows = await db!.query('reports', orderBy: 'created_at DESC');
     return rows.map(_rowToReport).toList();
   }
 

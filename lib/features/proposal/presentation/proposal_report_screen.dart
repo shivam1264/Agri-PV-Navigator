@@ -32,20 +32,20 @@ class _ProposalReportScreenState extends ConsumerState<ProposalReportScreen> {
       final farm = draft.toFarm();
       final design = draft.design ?? draft.generateDesign();
 
-      final file = await ReportPdfService.generateProposalReport(
+      final filePath = await ReportPdfService.generateProposalReport(
         farm: farm,
         design: design,
       );
 
-      // Save report record to SQLite
+      // Save report record to SQLite (or in-memory list on Web)
       final report = ProposalReport(
         id: const Uuid().v4(),
         title: 'Agri-PV Proposal — ${farm.name}',
         farmName: farm.name,
         date: DateTime.now(),
         type: ReportType.proposal,
-        fileSize: '${(file.lengthSync() / 1024).toStringAsFixed(0)} KB',
-        downloadUrl: file.path,
+        fileSize: '—', // Hard to get length synchronously without dart:io File
+        downloadUrl: filePath,
       );
       await LocalDbService().insertReport(report);
       // Refresh reports list
@@ -53,28 +53,38 @@ class _ProposalReportScreenState extends ConsumerState<ProposalReportScreen> {
 
       setState(() {
         _isDownloading = false;
-        _generatedFilePath = file.path;
+        _generatedFilePath = filePath;
       });
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.check_circle, color: Colors.white),
-                const SizedBox(width: 8),
-                Expanded(child: Text('PDF saved: ${file.path.split('/').last}')),
-              ],
+        if (filePath == 'web_download') {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('PDF downloaded successfully!'),
+              backgroundColor: AppColors.primary,
+              behavior: SnackBarBehavior.floating,
             ),
-            backgroundColor: AppColors.primary,
-            behavior: SnackBarBehavior.floating,
-            action: SnackBarAction(
-              label: 'Share',
-              textColor: Colors.white,
-              onPressed: () => _shareFile(file.path),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.check_circle, color: Colors.white),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text('PDF saved: ${filePath.split('/').last}')),
+                ],
+              ),
+              backgroundColor: AppColors.primary,
+              behavior: SnackBarBehavior.floating,
+              action: SnackBarAction(
+                label: 'Share',
+                textColor: Colors.white,
+                onPressed: () => _shareFile(filePath),
+              ),
             ),
-          ),
-        );
+          );
+        }
       }
     } catch (e) {
       setState(() => _isDownloading = false);
@@ -90,11 +100,12 @@ class _ProposalReportScreenState extends ConsumerState<ProposalReportScreen> {
   }
 
   Future<void> _shareFile(String filePath) async {
+    if (filePath == 'web_download') return; // Sharing is handled by browser download
     await Share.shareXFiles([XFile(filePath)], text: 'Agri-PV Proposal Report');
   }
 
   void _handleShare() async {
-    if (_generatedFilePath != null) {
+    if (_generatedFilePath != null && _generatedFilePath != 'web_download') {
       await _shareFile(_generatedFilePath!);
     } else {
       await _handleDownload();

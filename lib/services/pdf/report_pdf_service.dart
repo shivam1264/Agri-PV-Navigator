@@ -1,14 +1,16 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:path_provider/path_provider.dart';
+import 'package:printing/printing.dart';
 import '../../models/farm.dart';
 import '../../models/agri_pv_design.dart';
 
 class ReportPdfService {
   ReportPdfService._();
 
-  static Future<File> generateProposalReport({
+  static Future<String> generateProposalReport({
     required Farm farm,
     required AgriPvDesign design,
   }) async {
@@ -398,12 +400,19 @@ class ReportPdfService {
     );
 
     // ─── Save to documents directory ─────────────────────────────────────────
-    final dir = await getApplicationDocumentsDirectory();
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final filename = 'AgriPV_${farm.name.replaceAll(' ', '_')}_$timestamp.pdf';
-    final file = File('${dir.path}/$filename');
-    await file.writeAsBytes(await pdf.save());
-    return file;
+    final bytes = await pdf.save();
+
+    if (kIsWeb) {
+      await Printing.sharePdf(bytes: bytes, filename: 'AgriPV_Proposal_${farm.name.replaceAll(' ', '_')}.pdf');
+      return 'web_download';
+    } else {
+      final dir = await getApplicationDocumentsDirectory();
+      final sanitizedName = farm.name.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_');
+      final path = '${dir.path}/AgriPV_Proposal_$sanitizedName.pdf';
+      final file = File(path);
+      await file.writeAsBytes(bytes);
+      return file.path;
+    }
   }
 
   // ─── Helper Widgets ───────────────────────────────────────────────────────

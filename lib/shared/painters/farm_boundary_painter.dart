@@ -8,18 +8,28 @@ class FarmBoundaryPainter extends CustomPainter {
   final bool showPins;
   final bool interactive;
   final bool drawBackground;
+  final List<Offset> points;
+  final double zoomScale;
 
   FarmBoundaryPainter({
     this.areaAcres = 2.35,
     this.showPins = true,
     this.interactive = false,
     this.drawBackground = true,
+    this.points = const [],
+    this.zoomScale = 1.0,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
     final w = size.width;
     final h = size.height;
+
+    canvas.save();
+    // Zoom around the center
+    canvas.translate(w / 2, h / 2);
+    canvas.scale(zoomScale, zoomScale);
+    canvas.translate(-w / 2, -h / 2);
 
     // 1. Draw Satellite Landscape Background if enabled
     if (drawBackground) {
@@ -65,18 +75,14 @@ class FarmBoundaryPainter extends CustomPainter {
     }
     }
 
-    // 2. Main Farm Polygon Coordinates (Centered Farm Field)
-    final p1 = Offset(w * 0.20, h * 0.22);
-    final p2 = Offset(w * 0.82, h * 0.18);
-    final p3 = Offset(w * 0.88, h * 0.78);
-    final p4 = Offset(w * 0.16, h * 0.72);
+    // 2. Main Farm Polygon Coordinates
+    if (points.isEmpty) return;
 
-    final polygonPath = Path()
-      ..moveTo(p1.dx, p1.dy)
-      ..lineTo(p2.dx, p2.dy)
-      ..lineTo(p3.dx, p3.dy)
-      ..lineTo(p4.dx, p4.dy)
-      ..close();
+    final polygonPath = Path()..moveTo(points[0].dx, points[0].dy);
+    for (int i = 1; i < points.length; i++) {
+      polygonPath.lineTo(points[i].dx, points[i].dy);
+    }
+    polygonPath.close();
 
     // 3. Polygon Semi-Transparent Fill (Bright Agri Green overlay)
     final fillPaint = Paint()
@@ -107,17 +113,20 @@ class FarmBoundaryPainter extends CustomPainter {
         ..color = AppColors.primary
         ..style = PaintingStyle.fill;
 
-      for (final p in [p1, p2, p3, p4]) {
+      for (final p in points) {
         canvas.drawCircle(p, 8.0, pinOuterPaint);
         canvas.drawCircle(p, 4.5, pinInnerPaint);
       }
     }
 
     // 6. Center Area Badge Pill (e.g. "2.35 acres")
-    final center = Offset(
-      (p1.dx + p2.dx + p3.dx + p4.dx) / 4,
-      (p1.dy + p2.dy + p3.dy + p4.dy) / 4,
-    );
+    double sumX = 0;
+    double sumY = 0;
+    for (final p in points) {
+      sumX += p.dx;
+      sumY += p.dy;
+    }
+    final center = Offset(sumX / points.length, sumY / points.length);
 
     final badgeText = '${areaAcres.toStringAsFixed(2)} acres';
     const textStyle = TextStyle(
@@ -165,12 +174,16 @@ class FarmBoundaryPainter extends CustomPainter {
       canvas,
       Offset(center.dx - textPainter.width / 2, center.dy - textPainter.height / 2),
     );
+
+    canvas.restore();
   }
 
   @override
   bool shouldRepaint(covariant FarmBoundaryPainter oldDelegate) {
     return oldDelegate.areaAcres != areaAcres ||
         oldDelegate.showPins != showPins ||
-        oldDelegate.interactive != interactive;
+        oldDelegate.interactive != interactive ||
+        oldDelegate.points != points ||
+        oldDelegate.zoomScale != zoomScale;
   }
 }

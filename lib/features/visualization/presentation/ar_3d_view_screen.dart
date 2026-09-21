@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../providers/farm_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/app_button.dart';
@@ -10,22 +12,47 @@ import '../engine/camera_controller.dart';
 import 'widgets/realtime_agri_pv_3d_viewport.dart';
 import 'widgets/sun_time_slider.dart';
 
-class Ar3dViewScreen extends StatefulWidget {
+class Ar3dViewScreen extends ConsumerStatefulWidget {
   const Ar3dViewScreen({super.key});
 
   @override
-  State<Ar3dViewScreen> createState() => _Ar3dViewScreenState();
+  ConsumerState<Ar3dViewScreen> createState() => _Ar3dViewScreenState();
 }
 
-class _Ar3dViewScreenState extends State<Ar3dViewScreen> {
+class _Ar3dViewScreenState extends ConsumerState<Ar3dViewScreen> {
   final Scene3dController _sceneController = Scene3dController();
   bool _isArView = false;
+  bool _isFullscreen = false;
   int _controlTab = 0; // 0: Sun/Time, 1: Structure (Tilt/Height/Spacing), 2: Crops
 
   @override
   void initState() {
     super.initState();
     _sceneController.addListener(_onSceneUpdate);
+
+    // Apply design configuration from draft farm if available
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final draftFarm = ref.read(draftFarmProvider);
+      if (draftFarm.design != null) {
+        final d = draftFarm.design!;
+        final config = _sceneController.designConfig;
+        config.panelTilt = d.tiltDegrees;
+        config.panelHeight = d.panelHeightMeters;
+        config.rowSpacing = d.rowSpacingMeters;
+        
+        // Match crop type
+        final cropLower = draftFarm.crop.toLowerCase();
+        if (cropLower.contains('wheat')) {
+          config.cropType = AgriCrop3dType.wheat;
+        } else if (cropLower.contains('potato') || cropLower.contains('leafy') || cropLower.contains('vegetable')) {
+          config.cropType = AgriCrop3dType.vegetables;
+        } else if (cropLower.contains('mustard')) {
+          config.cropType = AgriCrop3dType.mustard;
+        } else if (cropLower.contains('rice')) {
+          config.cropType = AgriCrop3dType.rice;
+        }
+      }
+    });
   }
 
   @override
@@ -41,9 +68,14 @@ class _Ar3dViewScreenState extends State<Ar3dViewScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isFullscreen) {
+      return _buildFullscreenView();
+    }
+
     final config = _sceneController.designConfig;
     final camera = _sceneController.cameraController;
     final sun = _sceneController.sunController;
+    final draftFarm = ref.watch(draftFarmProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -230,11 +262,33 @@ class _Ar3dViewScreenState extends State<Ar3dViewScreen> {
                             ],
                           )
                         else
-                          // Real-Time 3D Interactive Scene Viewport
-                          RealtimeAgriPv3dViewport(
-                            controller: _sceneController,
-                            showSunGizmo: true,
-                            enableGestures: true,
+                          Stack(
+                            children: [
+                              // Real-Time 3D Interactive Scene Viewport
+                              RealtimeAgriPv3dViewport(
+                                controller: _sceneController,
+                                boundaryCoords: draftFarm.coordinates,
+                                showSunGizmo: true,
+                                enableGestures: true,
+                              ),
+                              // Maximize Button
+                              Positioned(
+                                top: 8,
+                                right: 8,
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.black45,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: IconButton(
+                                    icon: const Icon(Icons.fullscreen, color: Colors.white),
+                                    onPressed: () {
+                                      setState(() => _isFullscreen = true);
+                                    },
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
 
                         // Camera View Preset Badges on Top-Left
@@ -656,6 +710,39 @@ class _Ar3dViewScreenState extends State<Ar3dViewScreen> {
           shape: BoxShape.circle,
         ),
         child: Icon(icon, color: Colors.white, size: 16),
+      ),
+    );
+  }
+
+  Widget _buildFullscreenView() {
+    final draftFarm = ref.watch(draftFarmProvider);
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: [
+          RealtimeAgriPv3dViewport(
+            controller: _sceneController,
+            boundaryCoords: draftFarm.coordinates,
+            showSunGizmo: true,
+            enableGestures: true,
+          ),
+          Positioned(
+            top: 16,
+            right: 16,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.black54,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: IconButton(
+                icon: const Icon(Icons.fullscreen_exit, color: Colors.white, size: 32),
+                onPressed: () {
+                  setState(() => _isFullscreen = false);
+                },
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -9,6 +9,7 @@ import 'three_js_bridge.dart';
 
 class RealtimeAgriPv3dViewport extends StatefulWidget {
   final Scene3dController controller;
+  final List<String>? boundaryCoords;
   final bool showSunGizmo;
   final bool enableGestures;
   final VoidCallback? onTap;
@@ -16,6 +17,7 @@ class RealtimeAgriPv3dViewport extends StatefulWidget {
   const RealtimeAgriPv3dViewport({
     super.key,
     required this.controller,
+    this.boundaryCoords,
     this.showSunGizmo = true,
     this.enableGestures = true,
     this.onTap,
@@ -63,12 +65,13 @@ class _RealtimeAgriPv3dViewportState extends State<RealtimeAgriPv3dViewport> {
         'farmL': 160.0,
         'farmW': 160.0,
         'tiltRad': config.panelTilt * (math.pi / 180.0),
-        'spacing': config.rowSpacing * 4.0, // Scaled for visual
-        'stiltH': config.panelHeight * 4.0,
-        'panelW': 4.2 * 4.0,
-        'panelChord': 2.2 * 4.0,
+        'spacing': config.rowSpacing,
+        'stiltH': config.panelHeight,
+        'panelW': 4.2,
+        'panelChord': 2.2,
         'sunAzimuthRad': sun.solarAzimuthRad,
         'sunElevationRad': sun.solarAltitudeRad,
+        'boundaryCoords': widget.boundaryCoords ?? [],
       };
 
       return ThreeJsBridge(configJson: jsonEncode(configMap));

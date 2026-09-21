@@ -71,8 +71,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -106,14 +109,14 @@ class _LoginScreenState extends State<LoginScreen> {
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: AppColors.surface,
+                    color: isDark ? theme.cardColor : AppColors.surface,
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppColors.border, width: 1.0),
-                    boxShadow: const [
+                    border: Border.all(color: theme.dividerColor, width: 1.0),
+                    boxShadow: [
                       BoxShadow(
-                        color: AppColors.shadow,
+                        color: isDark ? Colors.black54 : AppColors.shadow,
                         blurRadius: 10,
-                        offset: Offset(0, 3),
+                        offset: const Offset(0, 3),
                       ),
                     ],
                   ),
@@ -185,17 +188,17 @@ class _LoginScreenState extends State<LoginScreen> {
                       // Divider
                       Row(
                         children: [
-                          const Expanded(child: Divider(color: AppColors.border)),
+                          Expanded(child: Divider(color: theme.dividerColor)),
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 12),
                             child: Text(
                               'or',
                               style: AppTypography.labelSmall.copyWith(
-                                color: AppColors.textTertiary,
+                                color: isDark ? const Color(0xFF64748B) : AppColors.textTertiary,
                               ),
                             ),
                           ),
-                          const Expanded(child: Divider(color: AppColors.border)),
+                          Expanded(child: Divider(color: theme.dividerColor)),
                         ],
                       ),
                       const SizedBox(height: 18),
@@ -206,8 +209,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         height: 48,
                         child: OutlinedButton(
                           style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: AppColors.border, width: 1.2),
-                            backgroundColor: Colors.white,
+                            side: BorderSide(color: theme.dividerColor, width: 1.2),
+                            backgroundColor: isDark ? const Color(0xFF1B241F) : Colors.white,
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
                           ),
                           onPressed: () {
@@ -230,7 +233,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               Text(
                                 'Continue with Google',
                                 style: AppTypography.buttonText.copyWith(
-                                  color: AppColors.textPrimary,
+                                  color: isDark ? Colors.white : AppColors.textPrimary,
                                 ),
                               ),
                             ],
@@ -245,20 +248,20 @@ class _LoginScreenState extends State<LoginScreen> {
                         height: 48,
                         child: OutlinedButton(
                           style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: AppColors.border, width: 1.2),
-                            backgroundColor: Colors.white,
+                            side: BorderSide(color: theme.dividerColor, width: 1.2),
+                            backgroundColor: isDark ? const Color(0xFF1B241F) : Colors.white,
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
                           ),
                           onPressed: () => context.go('/home'),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Icon(Icons.person_outline_rounded, size: 20, color: AppColors.textSecondary),
+                              Icon(Icons.person_outline_rounded, size: 20, color: isDark ? const Color(0xFF94A3B8) : AppColors.textSecondary),
                               const SizedBox(width: 10),
                               Text(
                                 'Continue as Guest',
                                 style: AppTypography.buttonText.copyWith(
-                                  color: AppColors.textPrimary,
+                                  color: isDark ? Colors.white : AppColors.textPrimary,
                                 ),
                               ),
                             ],

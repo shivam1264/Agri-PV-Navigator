@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_card.dart';
@@ -31,16 +32,23 @@ class _CompareDesignsScreenState extends State<CompareDesignsScreen> {
       crop: crop,
     );
     final selectedDesign = designs[_selectedDesignIndex];
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         title: Text(
           'Compare Up to 3 Designs',
-          style: AppTypography.screenHeading.copyWith(fontSize: 18),
+          style: AppTypography.screenHeading.copyWith(
+            fontSize: 18,
+            color: isDark ? Colors.white : null,
+          ),
         ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
+          icon: Icon(Icons.arrow_back_rounded, color: isDark ? Colors.white : null),
           onPressed: () => context.go('/agri-pv-design'),
         ),
       ),
@@ -79,10 +87,12 @@ class _CompareDesignsScreenState extends State<CompareDesignsScreen> {
                               ),
                               padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
                               decoration: BoxDecoration(
-                                color: isSelected ? AppColors.primarySurface : AppColors.surface,
+                                color: isSelected
+                                    ? (isDark ? const Color(0xFF133520) : AppColors.primarySurface)
+                                    : (isDark ? theme.cardColor : AppColors.surface),
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
-                                  color: isSelected ? AppColors.primary : AppColors.border,
+                                  color: isSelected ? AppColors.primary : theme.dividerColor,
                                   width: isSelected ? 1.8 : 1.0,
                                 ),
                               ),
@@ -95,7 +105,7 @@ class _CompareDesignsScreenState extends State<CompareDesignsScreen> {
                                     decoration: BoxDecoration(
                                       borderRadius: BorderRadius.circular(8),
                                       border: Border.all(
-                                        color: isSelected ? AppColors.primary : AppColors.borderLight,
+                                        color: isSelected ? AppColors.primary : theme.dividerColor,
                                         width: 1.0,
                                       ),
                                     ),
@@ -117,14 +127,16 @@ class _CompareDesignsScreenState extends State<CompareDesignsScreen> {
                                     style: AppTypography.cardTitle.copyWith(
                                       fontSize: 13,
                                       fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                                      color: isSelected ? AppColors.primaryDark : AppColors.textPrimary,
+                                      color: isSelected
+                                          ? (isDark ? AppColors.primaryLight : AppColors.primaryDark)
+                                          : (isDark ? Colors.white : AppColors.textPrimary),
                                     ),
                                   ),
                                   Text(
                                     '${d.pvCapacityKw.toInt()} kW',
                                     style: AppTypography.labelSmall.copyWith(
                                       fontSize: 11,
-                                      color: AppColors.textSecondary,
+                                      color: isDark ? const Color(0xFF94A3B8) : AppColors.textSecondary,
                                     ),
                                   ),
                                 ],
@@ -148,28 +160,28 @@ class _CompareDesignsScreenState extends State<CompareDesignsScreen> {
                             '${designs[2].pvCapacityKw.toStringAsFixed(0)} kW',
                             isHeader: false,
                           ),
-                          const Divider(height: 16, color: AppColors.borderLight),
+                          Divider(height: 16, color: theme.dividerColor),
                           _buildTableRow(
                             'Cultivable Area',
                             '${designs[0].cultivableAreaPercent.toStringAsFixed(0)}%',
                             '${designs[1].cultivableAreaPercent.toStringAsFixed(0)}%',
                             '${designs[2].cultivableAreaPercent.toStringAsFixed(0)}%',
                           ),
-                          const Divider(height: 16, color: AppColors.borderLight),
+                          Divider(height: 16, color: theme.dividerColor),
                           _buildTableRow(
                             'Annual Energy',
                             '${designs[0].annualEnergyMwh.toStringAsFixed(0)} MWh',
                             '${designs[1].annualEnergyMwh.toStringAsFixed(0)} MWh',
                             '${designs[2].annualEnergyMwh.toStringAsFixed(0)} MWh',
                           ),
-                          const Divider(height: 16, color: AppColors.borderLight),
+                          Divider(height: 16, color: theme.dividerColor),
                           _buildTableRow(
                             'Crop Yield',
                             '${designs[0].cropYieldPercent.toStringAsFixed(0)}%',
                             '${designs[1].cropYieldPercent.toStringAsFixed(0)}%',
                             '${designs[2].cropYieldPercent.toStringAsFixed(0)}%',
                           ),
-                          const Divider(height: 16, color: AppColors.borderLight),
+                          Divider(height: 16, color: theme.dividerColor),
                           _buildTableRow(
                             'Land Use (LER)',
                             designs[0].landEquivalentRatio.toStringAsFixed(2),
@@ -177,28 +189,28 @@ class _CompareDesignsScreenState extends State<CompareDesignsScreen> {
                             designs[2].landEquivalentRatio.toStringAsFixed(2),
                             highlightMiddle: true,
                           ),
-                          const Divider(height: 16, color: AppColors.borderLight),
+                          Divider(height: 16, color: theme.dividerColor),
                           _buildTableRow(
                             'LCOE (Cost/kWh)',
                             '₹${designs[0].lcoePerKwh.toStringAsFixed(2)}',
                             '₹${designs[1].lcoePerKwh.toStringAsFixed(2)}',
                             '₹${designs[2].lcoePerKwh.toStringAsFixed(2)}',
                           ),
-                          const Divider(height: 16, color: AppColors.borderLight),
+                          Divider(height: 16, color: theme.dividerColor),
                           _buildTableRow(
                             'Water Conserved',
                             '${(designs[0].waterSavedLiters / 1000).toStringAsFixed(0)} kL/y',
                             '${(designs[1].waterSavedLiters / 1000).toStringAsFixed(0)} kL/y',
                             '${(designs[2].waterSavedLiters / 1000).toStringAsFixed(0)} kL/y',
                           ),
-                          const Divider(height: 16, color: AppColors.borderLight),
+                          Divider(height: 16, color: theme.dividerColor),
                           _buildTableRow(
                             'Project Cost',
                             '₹${designs[0].projectCostCr.toStringAsFixed(2)} Cr',
                             '₹${designs[1].projectCostCr.toStringAsFixed(2)} Cr',
                             '₹${designs[2].projectCostCr.toStringAsFixed(2)} Cr',
                           ),
-                          const Divider(height: 16, color: AppColors.borderLight),
+                          Divider(height: 16, color: theme.dividerColor),
                           _buildTableRow(
                             'Payback Period',
                             '${designs[0].paybackYears.toStringAsFixed(1)} yrs',
@@ -215,9 +227,13 @@ class _CompareDesignsScreenState extends State<CompareDesignsScreen> {
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                       decoration: BoxDecoration(
-                        color: AppColors.primarySurface,
+                        color: isDark ? const Color(0xFF133520) : AppColors.primarySurface,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.primaryLight.withValues(alpha: 0.3)),
+                        border: Border.all(
+                          color: isDark
+                              ? AppColors.primary.withValues(alpha: 0.3)
+                              : AppColors.primaryLight.withValues(alpha: 0.3),
+                        ),
                       ),
                       child: Center(
                         child: Column(
@@ -227,7 +243,7 @@ class _CompareDesignsScreenState extends State<CompareDesignsScreen> {
                               style: AppTypography.cardTitle.copyWith(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w700,
-                                color: AppColors.primaryDark,
+                                color: isDark ? AppColors.primaryLight : AppColors.primaryDark,
                               ),
                             ),
                             const SizedBox(height: 2),
@@ -239,7 +255,7 @@ class _CompareDesignsScreenState extends State<CompareDesignsScreen> {
                                       : 'Maximum PV Power (${selectedDesign.pvCapacityKw.toStringAsFixed(0)} kW)',
                               style: AppTypography.labelSmall.copyWith(
                                 fontSize: 11,
-                                color: AppColors.primary,
+                                color: isDark ? AppColors.accent : AppColors.primary,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -319,6 +335,7 @@ class _CompareDesignsScreenState extends State<CompareDesignsScreen> {
     bool isHeader = false,
     bool highlightMiddle = false,
   }) {
+    final isDark = AppTheme.isDark;
     return Row(
       children: [
         Expanded(
@@ -327,7 +344,7 @@ class _CompareDesignsScreenState extends State<CompareDesignsScreen> {
             metric,
             style: AppTypography.label.copyWith(
               fontWeight: isHeader ? FontWeight.w700 : FontWeight.w500,
-              color: AppColors.textPrimary,
+              color: isDark ? Colors.white : AppColors.textPrimary,
               fontSize: 12,
             ),
           ),
@@ -340,7 +357,9 @@ class _CompareDesignsScreenState extends State<CompareDesignsScreen> {
             style: TextStyle(
               fontSize: 12,
               fontWeight: _selectedDesignIndex == 0 ? FontWeight.w700 : FontWeight.w400,
-              color: _selectedDesignIndex == 0 ? AppColors.primary : AppColors.textSecondary,
+              color: _selectedDesignIndex == 0
+                  ? (isDark ? AppColors.accent : AppColors.primary)
+                  : (isDark ? const Color(0xFF94A3B8) : AppColors.textSecondary),
             ),
           ),
         ),
@@ -349,7 +368,9 @@ class _CompareDesignsScreenState extends State<CompareDesignsScreen> {
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 2),
             decoration: BoxDecoration(
-              color: _selectedDesignIndex == 1 ? AppColors.primarySurface : Colors.transparent,
+              color: _selectedDesignIndex == 1
+                  ? (isDark ? const Color(0xFF133520) : AppColors.primarySurface)
+                  : Colors.transparent,
               borderRadius: BorderRadius.circular(4),
             ),
             child: Text(
@@ -358,7 +379,9 @@ class _CompareDesignsScreenState extends State<CompareDesignsScreen> {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
-                color: _selectedDesignIndex == 1 ? AppColors.primaryDark : AppColors.primary,
+                color: _selectedDesignIndex == 1
+                    ? (isDark ? AppColors.accent : AppColors.primaryDark)
+                    : (isDark ? AppColors.primaryLight : AppColors.primary),
               ),
             ),
           ),
@@ -371,7 +394,9 @@ class _CompareDesignsScreenState extends State<CompareDesignsScreen> {
             style: TextStyle(
               fontSize: 12,
               fontWeight: _selectedDesignIndex == 2 ? FontWeight.w700 : FontWeight.w400,
-              color: _selectedDesignIndex == 2 ? AppColors.primary : AppColors.textSecondary,
+              color: _selectedDesignIndex == 2
+                  ? (isDark ? AppColors.accent : AppColors.primary)
+                  : (isDark ? const Color(0xFF94A3B8) : AppColors.textSecondary),
             ),
           ),
         ),

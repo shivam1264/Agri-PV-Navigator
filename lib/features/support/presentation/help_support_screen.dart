@@ -90,14 +90,23 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F7F4),
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF4F7F4),
+        backgroundColor: Colors.transparent,
         elevation: 0,
-        title: Text('Help & Support', style: AppTypography.screenHeading.copyWith(fontSize: 20)),
+        title: Text(
+          'Help & Support',
+          style: AppTypography.screenHeading.copyWith(
+            fontSize: 20,
+            color: isDark ? Colors.white : null,
+          ),
+        ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
+          icon: Icon(Icons.arrow_back_rounded, color: isDark ? Colors.white : null),
           onPressed: () => context.go('/profile'),
         ),
       ),
@@ -112,20 +121,27 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
                   Container(
                     height: 48,
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: isDark ? theme.cardColor : Colors.white,
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
-                      boxShadow: const [BoxShadow(color: Color(0x06000000), blurRadius: 6, offset: Offset(0, 2))],
+                      border: Border.all(color: theme.dividerColor),
+                      boxShadow: [
+                        BoxShadow(
+                          color: isDark ? Colors.black54 : const Color(0x06000000),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
                     ),
-                    child: const TextField(
+                    child: TextField(
+                      style: TextStyle(color: isDark ? Colors.white : null),
                       decoration: InputDecoration(
                         hintText: 'Search help articles...',
-                        hintStyle: TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
-                        prefixIcon: Icon(Icons.search_rounded, color: Color(0xFF94A3B8), size: 20),
+                        hintStyle: TextStyle(color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8), fontSize: 14),
+                        prefixIcon: Icon(Icons.search_rounded, color: isDark ? AppColors.accent : const Color(0xFF94A3B8), size: 20),
                         border: InputBorder.none,
                         enabledBorder: InputBorder.none,
                         focusedBorder: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(vertical: 12),
+                        contentPadding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                     ),
                   ),
@@ -244,14 +260,22 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
     required String subtitle,
     required List<String> faqs,
   }) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final expanded = _expandedMap[index] ?? false;
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? theme.cardColor : Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE8F5E9)),
-        boxShadow: const [BoxShadow(color: Color(0x06000000), blurRadius: 6, offset: Offset(0, 2))],
+        border: Border.all(color: theme.dividerColor),
+        boxShadow: [
+          BoxShadow(
+            color: isDark ? Colors.black54 : const Color(0x06000000),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Material(
         color: Colors.transparent,
@@ -267,7 +291,10 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
                     Container(
                       width: 38,
                       height: 38,
-                      decoration: BoxDecoration(color: iconBg, borderRadius: BorderRadius.circular(10)),
+                      decoration: BoxDecoration(
+                        color: isDark ? iconColor.withValues(alpha: 0.15) : iconBg,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                       child: Icon(icon, color: iconColor, size: 20),
                     ),
                     const SizedBox(width: 12),
@@ -275,14 +302,27 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF0F172A))),
-                          Text(subtitle, style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
+                          Text(
+                            title,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: isDark ? Colors.white : const Color(0xFF0F172A),
+                            ),
+                          ),
+                          Text(
+                            subtitle,
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                            ),
+                          ),
                         ],
                       ),
                     ),
                     Icon(
                       expanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
-                      color: const Color(0xFF94A3B8),
+                      color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
                       size: 22,
                     ),
                   ],
@@ -290,15 +330,22 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
               ),
             ),
             if (expanded) ...[
-              const Divider(height: 1, color: Color(0xFFF1F5F9)),
+              Divider(height: 1, color: theme.dividerColor),
               ...faqs.map((faq) => Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                     child: Row(
                       children: [
-                        const Icon(Icons.arrow_forward_ios_rounded, size: 11, color: AppColors.primary),
+                        Icon(Icons.arrow_forward_ios_rounded, size: 11, color: isDark ? AppColors.accent : AppColors.primary),
                         const SizedBox(width: 10),
                         Expanded(
-                          child: Text(faq, style: const TextStyle(fontSize: 13, color: Color(0xFF334155), fontWeight: FontWeight.w500)),
+                          child: Text(
+                            faq,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF334155),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -317,27 +364,38 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
     required bool isPrimary,
     required VoidCallback onTap,
   }) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 13),
         decoration: BoxDecoration(
-          color: isPrimary ? AppColors.primary : Colors.white,
+          color: isPrimary ? AppColors.primary : (isDark ? theme.cardColor : Colors.white),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: isPrimary ? AppColors.primary : const Color(0xFFE2E8F0)),
-          boxShadow: const [BoxShadow(color: Color(0x08000000), blurRadius: 6, offset: Offset(0, 2))],
+          border: Border.all(
+            color: isPrimary ? AppColors.primary : theme.dividerColor,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: isDark ? Colors.black54 : const Color(0x08000000),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 18, color: isPrimary ? Colors.white : AppColors.primary),
+            Icon(icon, size: 18, color: isPrimary ? Colors.white : (isDark ? AppColors.accent : AppColors.primary)),
             const SizedBox(width: 8),
             Text(
               label,
               style: TextStyle(
                 fontSize: 13.5,
                 fontWeight: FontWeight.w700,
-                color: isPrimary ? Colors.white : AppColors.primary,
+                color: isPrimary ? Colors.white : (isDark ? Colors.white : AppColors.primary),
               ),
             ),
           ],

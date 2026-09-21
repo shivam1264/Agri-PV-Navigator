@@ -33,19 +33,20 @@ class _MyFarmsScreenState extends State<MyFarmsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final farmProv = context.watch<FarmProvider>();
-    final allFarms = farmProv.farms;
 
-    final filteredFarms = allFarms.where((farm) {
+    final filteredFarms = farmProv.farms.where((farm) {
       return farm.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           farm.location.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           farm.crop.toLowerCase().contains(_searchQuery.toLowerCase());
     }).toList();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F7F4),
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF4F7F4),
+        backgroundColor: Colors.transparent,
         elevation: 0,
         title: Text('My Farms', style: AppTypography.screenHeading.copyWith(fontSize: 20)),
         automaticallyImplyLeading: false,
@@ -54,11 +55,15 @@ class _MyFarmsScreenState extends State<MyFarmsScreen> {
             icon: Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: isDark ? theme.cardColor : Colors.white,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
+                border: Border.all(color: isDark ? theme.dividerColor : const Color(0xFFE2E8F0)),
               ),
-              child: const Icon(Icons.tune_rounded, size: 18, color: Color(0xFF1E293B)),
+              child: Icon(
+                Icons.tune_rounded,
+                size: 18,
+                color: isDark ? Colors.white : const Color(0xFF1E293B),
+              ),
             ),
             onPressed: () {},
           ),
@@ -77,23 +82,39 @@ class _MyFarmsScreenState extends State<MyFarmsScreen> {
                   Container(
                     height: 48,
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: isDark ? theme.cardColor : Colors.white,
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
-                      boxShadow: const [BoxShadow(color: Color(0x06000000), blurRadius: 6, offset: Offset(0, 2))],
+                      border: Border.all(color: isDark ? theme.dividerColor : const Color(0xFFE2E8F0)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.04),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
                     ),
                     child: TextField(
                       controller: _searchController,
                       onChanged: (val) => setState(() => _searchQuery = val),
-                      style: const TextStyle(fontSize: 14, color: Color(0xFF1E293B)),
-                      decoration: const InputDecoration(
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: isDark ? Colors.white : const Color(0xFF1E293B),
+                      ),
+                      decoration: InputDecoration(
                         hintText: 'Search farms by name or crop...',
-                        hintStyle: TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
-                        prefixIcon: Icon(Icons.search_rounded, size: 20, color: Color(0xFF94A3B8)),
+                        hintStyle: TextStyle(
+                          color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
+                          fontSize: 14,
+                        ),
+                        prefixIcon: Icon(
+                          Icons.search_rounded,
+                          size: 20,
+                          color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
+                        ),
                         border: InputBorder.none,
                         enabledBorder: InputBorder.none,
                         focusedBorder: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(vertical: 12),
+                        contentPadding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                     ),
                   ),
@@ -106,19 +127,26 @@ class _MyFarmsScreenState extends State<MyFarmsScreen> {
                       width: double.infinity,
                       height: 44,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFDCFCE7),
+                        color: isDark ? const Color(0xFF123520) : const Color(0xFFDCFCE7),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFF86EFAC), width: 1.2),
+                        border: Border.all(
+                          color: isDark ? const Color(0xFF1B5E30) : const Color(0xFF86EFAC),
+                          width: 1.2,
+                        ),
                       ),
-                      child: const Row(
+                      child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.add_rounded, color: Color(0xFF166534), size: 20),
-                          SizedBox(width: 6),
+                          Icon(
+                            Icons.add_rounded,
+                            color: isDark ? const Color(0xFF00E676) : const Color(0xFF166534),
+                            size: 20,
+                          ),
+                          const SizedBox(width: 6),
                           Text(
                             '+ Add New Farm',
                             style: TextStyle(
-                              color: Color(0xFF166534),
+                              color: isDark ? const Color(0xFF00E676) : const Color(0xFF166534),
                               fontSize: 14,
                               fontWeight: FontWeight.w700,
                             ),
@@ -138,7 +166,11 @@ class _MyFarmsScreenState extends State<MyFarmsScreen> {
                 children: [
                   Text(
                     '${filteredFarms.length} farm${filteredFarms.length == 1 ? '' : 's'}',
-                    style: const TextStyle(fontSize: 13, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ],
               ),

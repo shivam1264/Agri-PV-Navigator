@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_card.dart';
@@ -114,8 +115,11 @@ class _ProposalReportScreenState extends State<ProposalReportScreen> {
           crop: farm.crop,
         );
 
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
           children: [
@@ -143,17 +147,22 @@ class _ProposalReportScreenState extends State<ProposalReportScreen> {
                       width: 84,
                       height: 84,
                       decoration: BoxDecoration(
-                        color: AppColors.primarySurface,
+                        color: isDark ? const Color(0xFF133520) : AppColors.primarySurface,
                         shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.primaryLight.withValues(alpha: 0.3), width: 2),
+                        border: Border.all(
+                          color: isDark
+                              ? AppColors.primary.withValues(alpha: 0.3)
+                              : AppColors.primaryLight.withValues(alpha: 0.3),
+                          width: 2,
+                        ),
                       ),
                       child: Stack(
                         alignment: Alignment.center,
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.description_rounded,
                             size: 44,
-                            color: AppColors.primary,
+                            color: isDark ? AppColors.accent : AppColors.primary,
                           ),
                           Positioned(
                             bottom: 6,
@@ -205,14 +214,14 @@ class _ProposalReportScreenState extends State<ProposalReportScreen> {
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                 decoration: BoxDecoration(
-                                  color: AppColors.primarySurface,
+                                  color: isDark ? const Color(0xFF133520) : AppColors.primarySurface,
                                   borderRadius: BorderRadius.circular(12),
                                   border: Border.all(color: AppColors.primary, width: 1),
                                 ),
                                 child: Text(
                                   'LER: ${design.landEquivalentRatio.toStringAsFixed(2)}',
-                                  style: const TextStyle(
-                                    color: AppColors.primaryDark,
+                                  style: TextStyle(
+                                    color: isDark ? AppColors.primaryLight : AppColors.primaryDark,
                                     fontSize: 11,
                                     fontWeight: FontWeight.w700,
                                   ),
@@ -230,7 +239,7 @@ class _ProposalReportScreenState extends State<ProposalReportScreen> {
                               _buildMetricTile('Water Saved', '${(design.waterSavedLiters / 1000).toStringAsFixed(0)} kL'),
                             ],
                           ),
-                          const Divider(height: 16, color: AppColors.borderLight),
+                          Divider(height: 16, color: theme.dividerColor),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceAround,
                             children: [
@@ -335,17 +344,18 @@ class _ProposalReportScreenState extends State<ProposalReportScreen> {
   }
 
   Widget _buildCheckItem(String text) {
+    final isDark = AppTheme.isDark;
     return Padding(
       padding: const EdgeInsets.only(bottom: 10.0),
       child: Row(
         children: [
-          const Icon(Icons.check_circle_rounded, color: AppColors.primary, size: 18),
+          Icon(Icons.check_circle_rounded, color: isDark ? AppColors.accent : AppColors.primary, size: 18),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               text,
               style: AppTypography.bodySmall.copyWith(
-                color: AppColors.textPrimary,
+                color: isDark ? Colors.white : AppColors.textPrimary,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -356,23 +366,24 @@ class _ProposalReportScreenState extends State<ProposalReportScreen> {
   }
 
   Widget _buildMetricTile(String label, String value) {
+    final isDark = AppTheme.isDark;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Text(
           value,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w800,
-            color: AppColors.primaryDark,
+            color: isDark ? AppColors.primaryLight : AppColors.primaryDark,
           ),
         ),
         const SizedBox(height: 2),
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 10,
-            color: AppColors.textSecondary,
+            color: isDark ? const Color(0xFF94A3B8) : AppColors.textSecondary,
           ),
         ),
       ],

@@ -21,14 +21,21 @@ class ProgressStepper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final activeGreen = isDark ? const Color(0xFF00E676) : const Color(0xFF166534);
+    final inactiveLine = isDark ? const Color(0xFF1E2B23) : const Color(0xFFE2E8F0);
+    final inactiveCircle = isDark ? const Color(0xFF151D18) : const Color(0xFFF1F5F9);
+    final inactiveBorder = isDark ? const Color(0xFF2B3A30) : const Color(0xFFCBD5E1);
+
     final labels = customLabels ?? defaultStepLabels;
     final totalSteps = labels.length;
 
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 14, 20, 12),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0), width: 1.0)),
+      decoration: BoxDecoration(
+        color: isDark ? theme.cardColor : Colors.white,
+        border: Border(bottom: BorderSide(color: isDark ? theme.dividerColor : const Color(0xFFE2E8F0), width: 1.0)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -45,7 +52,7 @@ class ProgressStepper extends StatelessWidget {
                     height: 2.5,
                     margin: const EdgeInsets.symmetric(horizontal: 4),
                     decoration: BoxDecoration(
-                      color: isCompleted ? const Color(0xFF166534) : const Color(0xFFE2E8F0),
+                      color: isCompleted ? activeGreen : inactiveLine,
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -65,18 +72,18 @@ class ProgressStepper extends StatelessWidget {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: isCompleted || isCurrent
-                          ? const Color(0xFF166534)
-                          : const Color(0xFFF1F5F9),
+                          ? activeGreen
+                          : inactiveCircle,
                       border: Border.all(
                         color: isCompleted || isCurrent
-                            ? const Color(0xFF166534)
-                            : const Color(0xFFCBD5E1),
+                            ? activeGreen
+                            : inactiveBorder,
                         width: 1.5,
                       ),
                       boxShadow: isCurrent
                           ? [
                               BoxShadow(
-                                color: const Color(0xFF166534).withValues(alpha: 0.28),
+                                color: activeGreen.withValues(alpha: 0.28),
                                 blurRadius: 6,
                                 offset: const Offset(0, 2),
                               ),
@@ -85,13 +92,19 @@ class ProgressStepper extends StatelessWidget {
                     ),
                     child: Center(
                       child: isCompleted
-                          ? const Icon(Icons.check_rounded, size: 15, color: Colors.white)
+                          ? Icon(
+                              Icons.check_rounded,
+                              size: 15,
+                              color: isDark ? const Color(0xFF031A0B) : Colors.white,
+                            )
                           : Text(
                               '$stepNumber',
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w800,
-                                color: isCurrent ? Colors.white : const Color(0xFF64748B),
+                                color: isCurrent
+                                    ? (isDark ? const Color(0xFF031A0B) : Colors.white)
+                                    : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
                                 fontFamily: 'Inter',
                               ),
                             ),
@@ -123,10 +136,10 @@ class ProgressStepper extends StatelessWidget {
                       fontSize: 11.5,
                       fontWeight: isCurrent ? FontWeight.w800 : (isCompleted ? FontWeight.w600 : FontWeight.w500),
                       color: isCurrent
-                          ? const Color(0xFF166534)
+                          ? activeGreen
                           : isCompleted
-                              ? const Color(0xFF334155)
-                              : const Color(0xFF94A3B8),
+                              ? (isDark ? const Color(0xFFE2E8F0) : const Color(0xFF334155))
+                              : (isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8)),
                     ),
                   ),
                 ),

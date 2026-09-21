@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/painters/agrivoltaic_3d_painter.dart';
@@ -74,9 +75,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         automaticallyImplyLeading: false,
         actions: [
           TextButton(
@@ -84,7 +90,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             child: Text(
               'Skip',
               style: AppTypography.buttonText.copyWith(
-                color: AppColors.textSecondary,
+                color: isDark ? const Color(0xFF94A3B8) : AppColors.textSecondary,
                 fontSize: 14,
               ),
             ),
@@ -112,7 +118,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           item.title,
                           style: AppTypography.largeHeading.copyWith(
                             fontSize: 26,
-                            color: AppColors.textPrimary,
+                            color: isDark ? Colors.white : AppColors.textPrimary,
                           ),
                         ),
                         const SizedBox(height: 20),
@@ -123,13 +129,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           width: double.infinity,
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: AppColors.border, width: 1.5),
-                            color: Colors.white,
-                            boxShadow: const [
+                            border: Border.all(color: theme.dividerColor, width: 1.5),
+                            color: isDark ? theme.cardColor : Colors.white,
+                            boxShadow: [
                               BoxShadow(
-                                color: AppColors.shadow,
+                                color: isDark ? Colors.black54 : AppColors.shadow,
                                 blurRadius: 10,
-                                offset: Offset(0, 3),
+                                offset: const Offset(0, 3),
                               ),
                             ],
                           ),
@@ -167,7 +173,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         decoration: BoxDecoration(
                           color: _currentPage == index
                               ? AppColors.primary
-                              : AppColors.border,
+                              : (isDark ? const Color(0xFF1E2922) : AppColors.border),
                           borderRadius: BorderRadius.circular(4),
                         ),
                       ),
@@ -239,6 +245,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Widget _buildHighlightRow(String text) {
+    final isDark = AppTheme.isDark;
     return Padding(
       padding: const EdgeInsets.only(bottom: 12.0),
       child: Row(
@@ -246,13 +253,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           Container(
             width: 34,
             height: 34,
-            decoration: const BoxDecoration(
-              color: AppColors.primarySurface,
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF133520) : AppColors.primarySurface,
               shape: BoxShape.circle,
             ),
-            child: const Icon(
+            child: Icon(
               Icons.check_rounded,
-              color: AppColors.primary,
+              color: isDark ? AppColors.accent : AppColors.primary,
               size: 20,
             ),
           ),
@@ -263,7 +270,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               style: AppTypography.cardTitle.copyWith(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
+                color: isDark ? Colors.white : AppColors.textPrimary,
               ),
             ),
           ),

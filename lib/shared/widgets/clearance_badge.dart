@@ -16,9 +16,18 @@ class ClearanceBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bgColor = isCompatible ? AppColors.primarySurface : AppColors.warningLight;
-    final borderColor = isCompatible ? AppColors.primaryLight : AppColors.warning;
-    final iconColor = isCompatible ? AppColors.primary : AppColors.warning;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final bgColor = isCompatible
+        ? (isDark ? const Color(0xFF133520) : AppColors.primarySurface)
+        : (isDark ? const Color(0xFF332510) : AppColors.warningLight);
+    final borderColor = isCompatible
+        ? (isDark ? const Color(0xFF1B5E30) : AppColors.primaryLight)
+        : (isDark ? const Color(0xFF6E4E10) : AppColors.warning);
+    final iconColor = isCompatible
+        ? (isDark ? const Color(0xFF00E676) : AppColors.primary)
+        : (isDark ? const Color(0xFFFBBF24) : AppColors.warning);
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -33,7 +42,7 @@ class ClearanceBadge extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: isDark ? const Color(0xFF0C130F) : Colors.white,
               shape: BoxShape.circle,
               border: Border.all(color: borderColor.withValues(alpha: 0.3)),
             ),
@@ -55,14 +64,16 @@ class ClearanceBadge extends StatelessWidget {
                       style: AppTypography.cardTitle.copyWith(
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
-                        color: isCompatible ? AppColors.primaryDark : AppColors.warning,
+                        color: isCompatible
+                            ? (isDark ? const Color(0xFFB9F6CA) : AppColors.primaryDark)
+                            : (isDark ? const Color(0xFFFDE68A) : AppColors.warning),
                       ),
                     ),
                     const SizedBox(width: 6),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: isDark ? const Color(0xFF0C130F) : Colors.white,
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
@@ -70,7 +81,7 @@ class ClearanceBadge extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w700,
-                          color: isCompatible ? AppColors.primary : AppColors.warning,
+                          color: iconColor,
                         ),
                       ),
                     ),
@@ -81,7 +92,7 @@ class ClearanceBadge extends StatelessWidget {
                   details,
                   style: AppTypography.bodySmall.copyWith(
                     fontSize: 12,
-                    color: AppColors.textPrimary,
+                    color: isDark ? const Color(0xFFCBD5E1) : AppColors.textPrimary,
                   ),
                 ),
               ],

@@ -16,13 +16,15 @@ class SuitabilityDetailsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final farm = context.watch<FarmProvider>().currentOrDraftFarm;
     final suitProv = context.watch<SuitabilityProvider>();
     final assessment = suitProv.assessment ??
         AgriPvCalculationService.generateSiteAssessment(farm);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
           'Factor-wise Analysis',
@@ -44,13 +46,20 @@ class SuitabilityDetailsScreen extends StatelessWidget {
                   children: [
                     // Overall Assessment Card
                     AppCard(
-                      backgroundColor: AppColors.primarySurface,
-                      border: const BorderSide(color: AppColors.primaryLight, width: 1.0),
+                      backgroundColor: isDark ? const Color(0xFF123520) : AppColors.primarySurface,
+                      border: BorderSide(
+                        color: isDark ? const Color(0xFF1B5E30) : AppColors.primaryLight,
+                        width: 1.0,
+                      ),
                       padding: const EdgeInsets.all(16),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(Icons.verified_rounded, color: AppColors.primary, size: 24),
+                          Icon(
+                            Icons.verified_rounded,
+                            color: isDark ? const Color(0xFF00E676) : AppColors.primary,
+                            size: 24,
+                          ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Column(
@@ -59,7 +68,7 @@ class SuitabilityDetailsScreen extends StatelessWidget {
                                 Text(
                                   'Overall Assessment',
                                   style: AppTypography.cardTitle.copyWith(
-                                    color: AppColors.primaryDark,
+                                    color: isDark ? const Color(0xFFB9F6CA) : AppColors.primaryDark,
                                     fontSize: 15,
                                   ),
                                 ),
@@ -67,7 +76,7 @@ class SuitabilityDetailsScreen extends StatelessWidget {
                                 Text(
                                   assessment.summary,
                                   style: AppTypography.bodySmall.copyWith(
-                                    color: AppColors.textPrimary,
+                                    color: isDark ? const Color(0xFFF1F5F9) : AppColors.textPrimary,
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),
@@ -113,7 +122,7 @@ class SuitabilityDetailsScreen extends StatelessWidget {
                                 child: Text(
                                   rec,
                                   style: AppTypography.bodySmall.copyWith(
-                                    color: AppColors.textPrimary,
+                                    color: isDark ? const Color(0xFFF1F5F9) : AppColors.textPrimary,
                                     fontSize: 13,
                                   ),
                                 ),

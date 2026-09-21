@@ -183,19 +183,22 @@ class _FarmLocationScreenState extends State<FarmLocationScreen> {
       _areaAcres = GeocodingService.calculatePolygonAreaInAcres(_boundaryPoints);
     }
 
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF0F172A)),
+          icon: Icon(Icons.arrow_back_rounded, color: isDark ? Colors.white : const Color(0xFF0F172A)),
           onPressed: () => context.go('/home'),
         ),
-        title: const Text(
+        title: Text(
           'Farm Location',
           style: TextStyle(
-            color: Color(0xFF0F172A),
+            color: isDark ? Colors.white : const Color(0xFF0F172A),
             fontSize: 18,
             fontWeight: FontWeight.w800,
             fontFamily: 'Inter',
@@ -235,14 +238,14 @@ class _FarmLocationScreenState extends State<FarmLocationScreen> {
                         child: Container(
                           height: 42,
                           decoration: BoxDecoration(
-                            color: AppColors.surface,
+                            color: isDark ? theme.cardColor : AppColors.surface,
                             borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: AppColors.border),
+                            border: Border.all(color: theme.dividerColor),
                           ),
                           child: TextField(
                             controller: _searchController,
                             onSubmitted: _performSearch,
-                            style: AppTypography.bodySmall.copyWith(color: AppColors.textPrimary),
+                            style: AppTypography.bodySmall.copyWith(color: isDark ? Colors.white : AppColors.textPrimary),
                             decoration: InputDecoration(
                               hintText: 'Search city, village, or pincode...',
                               prefixIcon: _isSearching
@@ -277,9 +280,13 @@ class _FarmLocationScreenState extends State<FarmLocationScreen> {
                           height: 42,
                           padding: const EdgeInsets.symmetric(horizontal: 10),
                           decoration: BoxDecoration(
-                            color: AppColors.primarySurface,
+                            color: isDark ? const Color(0xFF133520) : AppColors.primarySurface,
                             borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: AppColors.primaryLight.withValues(alpha: 0.3)),
+                            border: Border.all(
+                              color: isDark
+                                  ? AppColors.primary.withValues(alpha: 0.3)
+                                  : AppColors.primaryLight.withValues(alpha: 0.3),
+                            ),
                           ),
                           child: Row(
                             children: [
@@ -289,13 +296,13 @@ class _FarmLocationScreenState extends State<FarmLocationScreen> {
                                       height: 14,
                                       child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
                                     )
-                                  : const Icon(Icons.my_location_rounded, size: 16, color: AppColors.primary),
+                                  : Icon(Icons.my_location_rounded, size: 16, color: isDark ? AppColors.accent : AppColors.primary),
                               const SizedBox(width: 5),
                               Text(
                                 _isLocating ? 'Locating...' : 'Use My Location',
                                 style: AppTypography.labelSmall.copyWith(
                                   fontWeight: FontWeight.w700,
-                                  color: AppColors.primaryDark,
+                                  color: isDark ? AppColors.primaryLight : AppColors.primaryDark,
                                 ),
                               ),
                             ],
@@ -310,18 +317,29 @@ class _FarmLocationScreenState extends State<FarmLocationScreen> {
                     Container(
                       margin: const EdgeInsets.only(top: 6),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: isDark ? theme.cardColor : Colors.white,
                         borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: AppColors.border),
-                        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 2))],
+                        border: Border.all(color: theme.dividerColor),
+                        boxShadow: [
+                          BoxShadow(
+                            color: isDark ? Colors.black54 : Colors.black12,
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: _searchResults.take(3).map((res) {
                           return ListTile(
                             dense: true,
-                            leading: const Icon(Icons.place_outlined, size: 18, color: AppColors.primary),
-                            title: Text(res.displayName, style: const TextStyle(fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
+                            leading: Icon(Icons.place_outlined, size: 18, color: isDark ? AppColors.accent : AppColors.primary),
+                            title: Text(
+                              res.displayName,
+                              style: TextStyle(fontSize: 12, color: isDark ? Colors.white : null),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                             onTap: () => _selectSearchResult(res),
                           );
                         }).toList(),
@@ -338,7 +356,7 @@ class _FarmLocationScreenState extends State<FarmLocationScreen> {
                 child: Container(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.border, width: 1.5),
+                    border: Border.all(color: theme.dividerColor, width: 1.5),
                     boxShadow: const [
                       BoxShadow(color: AppColors.shadow, blurRadius: 8, offset: Offset(0, 2)),
                     ],
@@ -506,7 +524,7 @@ class _FarmLocationScreenState extends State<FarmLocationScreen> {
                         ],
                       ),
                     ),
-                    Container(height: 36, width: 1, color: AppColors.border),
+                    Container(height: 36, width: 1, color: theme.dividerColor),
                     const SizedBox(width: 14),
                     Expanded(
                       flex: 2,

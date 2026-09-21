@@ -41,15 +41,23 @@ class AboutScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         title: Text(
           'About',
-          style: AppTypography.screenHeading.copyWith(fontSize: 20),
+          style: AppTypography.screenHeading.copyWith(
+            fontSize: 20,
+            color: isDark ? Colors.white : null,
+          ),
         ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
+          icon: Icon(Icons.arrow_back_rounded, color: isDark ? Colors.white : null),
           onPressed: () => context.go('/profile'),
         ),
       ),
@@ -71,13 +79,14 @@ class AboutScreen extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: AppColors.primarySurface,
+                        color: isDark ? const Color(0xFF133520) : AppColors.primarySurface,
                         borderRadius: BorderRadius.circular(100),
+                        border: isDark ? Border.all(color: AppColors.primary.withValues(alpha: 0.3)) : null,
                       ),
                       child: Text(
                         'Version 1.0.0 (Build 2026.1)',
                         style: AppTypography.labelSmall.copyWith(
-                          color: AppColors.primaryDark,
+                          color: isDark ? AppColors.primaryLight : AppColors.primaryDark,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -99,7 +108,7 @@ class AboutScreen extends StatelessWidget {
                             '"Empowering farmers with data-driven decisions for a greener, more prosperous tomorrow."',
                             style: AppTypography.bodyMedium.copyWith(
                               fontStyle: FontStyle.italic,
-                              color: AppColors.primaryDark,
+                              color: isDark ? AppColors.accent : AppColors.primaryDark,
                               fontWeight: FontWeight.w600,
                               height: 1.4,
                             ),
@@ -149,7 +158,7 @@ We are not liable for any losses arising from reliance on the application's outp
 For queries, contact support@agri-pv-navigator.example.com''',
                             ),
                           ),
-                          const Divider(height: 1, color: AppColors.borderLight),
+                          Divider(height: 1, color: theme.dividerColor),
                           _buildLegalTile(
                             context,
                             'Privacy Policy',
@@ -180,7 +189,7 @@ We use cookies for session management and analytics. You can opt out in App Sett
 For privacy concerns, email: privacy@agri-pv-navigator.example.com''',
                             ),
                           ),
-                          const Divider(height: 1, color: AppColors.borderLight),
+                          Divider(height: 1, color: theme.dividerColor),
                           _buildLegalTile(
                             context,
                             'Open Source Licenses',

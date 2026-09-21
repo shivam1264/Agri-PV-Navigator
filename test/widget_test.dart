@@ -31,7 +31,7 @@ void main() {
         child: const AgriPvNavigatorApp(),
       ),
     );
-    await tester.pump();
+    await tester.pump(const Duration(seconds: 3));
     expect(find.byType(AgriPvNavigatorApp), findsOneWidget);
   });
 }

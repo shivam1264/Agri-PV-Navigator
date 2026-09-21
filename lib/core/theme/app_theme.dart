@@ -3,6 +3,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 
 class AppTheme {
+  static Brightness currentBrightness = Brightness.light;
+  static bool get isDark => currentBrightness == Brightness.dark;
+
   static ThemeData get lightTheme => getLightTheme();
   static ThemeData get darkTheme => getDarkTheme();
 

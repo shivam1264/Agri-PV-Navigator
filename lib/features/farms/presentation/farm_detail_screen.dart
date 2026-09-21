@@ -45,8 +45,11 @@ class FarmDetailScreen extends StatelessWidget {
       );
     }
 
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
           farm.name,
@@ -72,12 +75,15 @@ class FarmDetailScreen extends StatelessWidget {
                       width: double.infinity,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(18),
-                        border: Border.all(color: AppColors.border, width: 1.5),
-                        boxShadow: const [
+                        border: Border.all(
+                          color: isDark ? theme.dividerColor : AppColors.border,
+                          width: 1.5,
+                        ),
+                        boxShadow: [
                           BoxShadow(
-                            color: AppColors.shadow,
+                            color: isDark ? Colors.black.withValues(alpha: 0.35) : AppColors.shadow,
                             blurRadius: 8,
-                            offset: Offset(0, 2),
+                            offset: const Offset(0, 2),
                           ),
                         ],
                       ),
@@ -109,31 +115,34 @@ class FarmDetailScreen extends StatelessWidget {
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: AppColors.primarySurface,
+                                  color: isDark ? const Color(0xFF123520) : AppColors.primarySurface,
                                   borderRadius: BorderRadius.circular(100),
+                                  border: Border.all(
+                                    color: isDark ? const Color(0xFF1B5E30) : AppColors.primaryLight.withValues(alpha: 0.3),
+                                  ),
                                 ),
                                 child: Text(
                                   '✓ ${farm.suitabilityScore}/100 Suitable',
                                   style: AppTypography.labelSmall.copyWith(
                                     fontWeight: FontWeight.w700,
-                                    color: AppColors.primaryDark,
+                                    color: isDark ? const Color(0xFF00E676) : AppColors.primaryDark,
                                   ),
                                 ),
                               ),
                             ],
                           ),
                           const SizedBox(height: 12),
-                          _buildDetailRow('Location', '${farm.location}, ${farm.state}'),
-                          const Divider(height: 16, color: AppColors.borderLight),
-                          _buildDetailRow('Total Area', '${farm.areaAcres} acres'),
-                          const Divider(height: 16, color: AppColors.borderLight),
-                          _buildDetailRow('Primary Crop', farm.crop),
-                          const Divider(height: 16, color: AppColors.borderLight),
-                          _buildDetailRow('Soil Type', farm.soilType),
-                          const Divider(height: 16, color: AppColors.borderLight),
-                          _buildDetailRow('Land Slope', farm.slope),
-                          const Divider(height: 16, color: AppColors.borderLight),
-                          _buildDetailRow('Grid Proximity', '${farm.gridProximityKm} km to substation'),
+                          _buildDetailRow('Location', '${farm.location}, ${farm.state}', isDark),
+                          Divider(height: 16, color: isDark ? theme.dividerColor : AppColors.borderLight),
+                          _buildDetailRow('Total Area', '${farm.areaAcres} acres', isDark),
+                          Divider(height: 16, color: isDark ? theme.dividerColor : AppColors.borderLight),
+                          _buildDetailRow('Primary Crop', farm.crop, isDark),
+                          Divider(height: 16, color: isDark ? theme.dividerColor : AppColors.borderLight),
+                          _buildDetailRow('Soil Type', farm.soilType, isDark),
+                          Divider(height: 16, color: isDark ? theme.dividerColor : AppColors.borderLight),
+                          _buildDetailRow('Land Slope', farm.slope, isDark),
+                          Divider(height: 16, color: isDark ? theme.dividerColor : AppColors.borderLight),
+                          _buildDetailRow('Grid Proximity', '${farm.gridProximityKm} km to substation', isDark),
                         ],
                       ),
                     ),
@@ -217,17 +226,24 @@ class FarmDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildDetailRow(String label, String val) {
+  Widget _buildDetailRow(String label, String val, bool isDark) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
           label,
-          style: AppTypography.labelSmall.copyWith(fontSize: 12),
+          style: AppTypography.labelSmall.copyWith(
+            fontSize: 12,
+            color: isDark ? const Color(0xFF94A3B8) : AppColors.textSecondary,
+          ),
         ),
         Text(
           val,
-          style: AppTypography.cardTitle.copyWith(fontSize: 13, fontWeight: FontWeight.w600),
+          style: AppTypography.cardTitle.copyWith(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: isDark ? Colors.white : AppColors.textPrimary,
+          ),
         ),
       ],
     );

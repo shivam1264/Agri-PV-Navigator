@@ -46,4 +46,11 @@ class AppColors {
 
   // Shadows
   static const Color shadow = Color(0x0A101828);
+
+  // Dynamic Theme-Aware Resolvers
+  static Color surfaceOf(BuildContext context) => Theme.of(context).cardColor;
+  static Color scaffoldOf(BuildContext context) => Theme.of(context).scaffoldBackgroundColor;
+  static Color textPrimaryOf(BuildContext context) => Theme.of(context).colorScheme.onSurface;
+  static Color primaryOf(BuildContext context) => Theme.of(context).colorScheme.primary;
+  static Color borderOf(BuildContext context) => Theme.of(context).dividerColor;
 }

@@ -30,6 +30,9 @@ class AppTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -37,7 +40,7 @@ class AppTextField extends StatelessWidget {
           label,
           style: AppTypography.label.copyWith(
             fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
+            color: isDark ? const Color(0xFFF1F5F9) : AppColors.textPrimary,
           ),
         ),
         const SizedBox(height: 6),
@@ -52,7 +55,11 @@ class AppTextField extends StatelessWidget {
           decoration: InputDecoration(
             hintText: hint,
             prefixIcon: prefixIcon != null
-                ? Icon(prefixIcon, color: AppColors.textSecondary, size: 20)
+                ? Icon(
+                    prefixIcon,
+                    color: isDark ? const Color(0xFF94A3B8) : AppColors.textSecondary,
+                    size: 20,
+                  )
                 : null,
             suffixIcon: suffix,
           ),

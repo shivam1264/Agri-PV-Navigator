@@ -17,12 +17,18 @@ class FactorCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: isDark ? theme.cardColor : AppColors.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border, width: 1.0),
+        border: Border.all(
+          color: isDark ? theme.dividerColor : AppColors.border,
+          width: 1.0,
+        ),
       ),
       child: Material(
         color: Colors.transparent,
@@ -65,7 +71,7 @@ class FactorCard extends StatelessWidget {
                             factor.shortReason,
                             style: AppTypography.bodySmall.copyWith(
                               fontSize: 12,
-                              color: AppColors.textSecondary,
+                              color: isDark ? const Color(0xFF94A3B8) : AppColors.textSecondary,
                             ),
                           ),
                         ],
@@ -84,13 +90,13 @@ class FactorCard extends StatelessWidget {
                                 style: AppTypography.cardTitle.copyWith(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w700,
-                                  color: AppColors.textPrimary,
+                                  color: isDark ? Colors.white : AppColors.textPrimary,
                                 ),
                               ),
                               TextSpan(
                                 text: ' / 100',
                                 style: AppTypography.labelSmall.copyWith(
-                                  color: AppColors.textTertiary,
+                                  color: isDark ? const Color(0xFF64748B) : AppColors.textTertiary,
                                 ),
                               ),
                             ],
@@ -100,7 +106,7 @@ class FactorCard extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: AppColors.primarySurface,
+                            color: isDark ? const Color(0xFF133520) : AppColors.primarySurface,
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
@@ -108,7 +114,7 @@ class FactorCard extends StatelessWidget {
                             style: AppTypography.labelSmall.copyWith(
                               fontSize: 10,
                               fontWeight: FontWeight.w600,
-                              color: AppColors.primaryDark,
+                              color: isDark ? const Color(0xFF00E676) : AppColors.primaryDark,
                             ),
                           ),
                         ),
@@ -122,10 +128,10 @@ class FactorCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(4),
                   child: LinearProgressIndicator(
                     value: factor.score / 100.0,
-                    backgroundColor: AppColors.borderLight,
+                    backgroundColor: isDark ? const Color(0xFF1E2B23) : AppColors.borderLight,
                     valueColor: AlwaysStoppedAnimation<Color>(
                       factor.score >= 80
-                          ? AppColors.primary
+                          ? (isDark ? const Color(0xFF00E676) : AppColors.primary)
                           : factor.score >= 65
                               ? AppColors.warning
                               : AppColors.error,
@@ -136,7 +142,7 @@ class FactorCard extends StatelessWidget {
                 // Detailed data if expanded
                 if (showDetails) ...[
                   const SizedBox(height: 12),
-                  const Divider(color: AppColors.borderLight, height: 1),
+                  Divider(color: isDark ? theme.dividerColor : AppColors.borderLight, height: 1),
                   const SizedBox(height: 10),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,

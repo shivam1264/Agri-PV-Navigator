@@ -1,6 +1,5 @@
-import 'dart:async';
-import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
@@ -27,7 +26,6 @@ class FarmLocationScreen extends StatefulWidget {
 class _FarmLocationScreenState extends State<FarmLocationScreen> {
   final MapController _mapController = MapController();
   final TextEditingController _searchController = TextEditingController();
-  Timer? _cameraDebounce;
 
   double _latitude = 25.4358;
   double _longitude = 81.8463;
@@ -37,361 +35,125 @@ class _FarmLocationScreenState extends State<FarmLocationScreen> {
 
   bool _isLocating = false;
   bool _isSearching = false;
-  bool _useSatellite = true;
+  bool _locationBlocked = false;
+
+  LatLng? _gpsPosition;
+  double? _gpsAccuracyM;
 
   List<LocationSearchResult> _searchResults = [];
   List<LatLng> _boundaryPoints = [];
+
+  int? _dragIndex;
+  LatLng? _dragCameraCenter;
+  double? _dragCameraZoom;
+  Timer? _areaTimer;
+  bool _manualEdit = false;
 
   @override
   void initState() {
     super.initState();
     final draft = context.read<FarmProvider>().draftFarm;
+    final hasSavedLocation = draft['district'] != null && (draft['district'] as String).trim().isNotEmpty;
+
     if (draft['latitude'] != null && draft['longitude'] != null) {
       _latitude = (draft['latitude'] as num).toDouble();
       _longitude = (draft['longitude'] as num).toDouble();
-      if (draft['district'] != null) {
-        _locationName = draft['district'].toString();
-      }
-      if (draft['state'] != null) {
-        _stateName = '${draft['state']}, India';
-      }
+    }
+    if (hasSavedLocation) {
+      _locationName = draft['district'].toString();
+      final state = draft['state']?.toString() ?? 'India';
+      _stateName = state.contains('India') ? state : '$state, India';
       if (draft['areaAcres'] != null) {
         _areaAcres = (draft['areaAcres'] as num).toDouble();
       }
+    } else {
+      _locationName = '';
+      _stateName = 'India';
     }
     _searchController.text = _locationName;
     _generateBoundaryPoints();
-  }
 
-  @override
-  void dispose() {
-    _cameraDebounce?.cancel();
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  void _onCameraMoved(LatLng center) {
-    _cameraDebounce?.cancel();
-    _cameraDebounce = Timer(const Duration(milliseconds: 700), () async {
-      _latitude = center.latitude;
-      _longitude = center.longitude;
-      final res = await GeocodingService.reverseGeocode(center.latitude, center.longitude);
-      if (!mounted) return;
-      setState(() {
-        if (res != null) {
-          _locationName = '${res.shortName}, ${res.district}';
-          _stateName = '${res.state}, India';
-          _searchController.text = _locationName;
-        }
-      });
-    });
-  }
-
-  Future<void> _relocatePlotTo(LatLng point) async {
-    setState(() {
-      _latitude = point.latitude;
-      _longitude = point.longitude;
-      _generateBoundaryPoints();
-    });
-    final res = await GeocodingService.reverseGeocode(point.latitude, point.longitude);
-    if (!mounted) return;
-    setState(() {
-      if (res != null) {
-        _locationName = '${res.shortName}, ${res.district}';
-        _stateName = '${res.state}, India';
-        _searchController.text = _locationName;
+    // Automatically fetch the user's precise location on open, unless a
+    // location was already chosen in an earlier session step.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && !hasSavedLocation) {
+        _locateUser(showSnackbar: false);
       }
     });
-    ScaffoldMessenger.of(context).clearSnackBars();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.place_rounded, color: Colors.white, size: 18),
-            const SizedBox(width: 8),
-            Expanded(child: Text('Plot moved to: $_locationName')),
-          ],
-        ),
-        backgroundColor: AppColors.primaryDark,
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 2),
-      ),
-    );
   }
-
-  int? _activeDragIndex;
-  int? _selectedCornerIndex;
-  bool _isDrawingMode = false;
-  final List<LatLng> _drawnPoints = [];
 
   void _generateBoundaryPoints() {
     // Generates a ~2-5 acre realistic agricultural plot around current center
     const double delta = 0.0010;
     setState(() {
-      _selectedCornerIndex = null;
-      _isDrawingMode = false;
-      _drawnPoints.clear();
       _boundaryPoints = [
         LatLng(_latitude + delta * 0.85, _longitude - delta * 0.95),
         LatLng(_latitude + delta * 0.90, _longitude + delta * 1.05),
         LatLng(_latitude - delta * 0.80, _longitude + delta * 1.10),
         LatLng(_latitude - delta * 0.88, _longitude - delta * 0.80),
       ];
+      _manualEdit = false;
       _areaAcres = GeocodingService.calculatePolygonAreaInAcres(_boundaryPoints);
     });
   }
 
-  void _setPresetPlot(double acres) {
-    // 1 acre is ~4046.86 m^2. For a square, half-span is ~31.8m * sqrt(acres)
-    final double sideMeters = 63.6 * math.sqrt(acres);
-    final double dLat = (sideMeters / 2.0) / 111139.0;
-    final double radLat = _latitude * math.pi / 180.0;
-    final double cosLat = math.cos(radLat).abs() > 0.1 ? math.cos(radLat).abs() : 1.0;
-    final double dLon = (sideMeters / 2.0) / (111139.0 * cosLat);
-
-    setState(() {
-      _selectedCornerIndex = null;
-      _isDrawingMode = false;
-      _drawnPoints.clear();
-      _boundaryPoints = [
-        LatLng(_latitude + dLat, _longitude - dLon),
-        LatLng(_latitude + dLat, _longitude + dLon),
-        LatLng(_latitude - dLat, _longitude + dLon),
-        LatLng(_latitude - dLat, _longitude - dLon),
-      ];
-      _areaAcres = GeocodingService.calculatePolygonAreaInAcres(_boundaryPoints);
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Applied ${acres.toStringAsFixed(1)} Acre preset plot.'),
-        backgroundColor: AppColors.primaryDark,
-        duration: const Duration(seconds: 2),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+  @override
+  void dispose() {
+    _areaTimer?.cancel();
+    _searchController.dispose();
+    super.dispose();
   }
 
-  void _moveSelectedCornerTo(LatLng point) {
-    if (_selectedCornerIndex == null || _selectedCornerIndex! >= _boundaryPoints.length) return;
-    setState(() {
-      _boundaryPoints[_selectedCornerIndex!] = point;
-      _areaAcres = GeocodingService.calculatePolygonAreaInAcres(_boundaryPoints);
+  /// Recomputes the acreage 700ms after the last drag ends, i.e. once the
+  /// boundary is judged stable. New drags restart the countdown.
+  void _scheduleAreaRecalc() {
+    _areaTimer?.cancel();
+    _areaTimer = Timer(const Duration(milliseconds: 700), () {
+      if (!mounted) return;
+      setState(() {
+        _areaAcres = GeocodingService.calculatePolygonAreaInAcres(_boundaryPoints);
+      });
     });
   }
 
-  void _nudgeCorner(int index, double dMetersY, double dMetersX) {
-    if (index < 0 || index >= _boundaryPoints.length) return;
-    final current = _boundaryPoints[index];
-    final double radLat = current.latitude * math.pi / 180.0;
-    final double cosLat = math.cos(radLat).abs() > 0.1 ? math.cos(radLat).abs() : 1.0;
-
-    final double dLat = dMetersY / 111139.0;
-    final double dLon = dMetersX / (111139.0 * cosLat);
-
-    setState(() {
-      _boundaryPoints[index] = LatLng(current.latitude + dLat, current.longitude + dLon);
-      _areaAcres = GeocodingService.calculatePolygonAreaInAcres(_boundaryPoints);
-    });
-  }
-
-  void _onMarkerDrag(int index, DragUpdateDetails details) {
-    if (index < 0 || index >= _boundaryPoints.length) return;
-
-    final currentZoom = _mapController.camera.zoom;
-    final currentPoint = _boundaryPoints[index];
-
-    // Web Mercator pixel scale calculation at current zoom & latitude
-    final double mapSize = 256.0 * math.pow(2.0, currentZoom);
-    final double radLat = currentPoint.latitude * math.pi / 180.0;
-    final double cosLat = math.cos(radLat).abs() > 0.05 ? math.cos(radLat).abs() : 1.0;
-
-    final double dLon = (details.delta.dx * 360.0) / mapSize;
-    final double dLat = -(details.delta.dy * 360.0 * cosLat) / mapSize;
-
-    setState(() {
-      _boundaryPoints[index] = LatLng(
-        currentPoint.latitude + dLat,
-        currentPoint.longitude + dLon,
-      );
-      _areaAcres = GeocodingService.calculatePolygonAreaInAcres(_boundaryPoints);
-    });
-  }
-
-  void _insertPointAfter(int index, LatLng point) {
-    setState(() {
-      _boundaryPoints.insert(index + 1, point);
-      _selectedCornerIndex = index + 1;
-      _areaAcres = GeocodingService.calculatePolygonAreaInAcres(_boundaryPoints);
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.add_circle_outline_rounded, color: Colors.white, size: 18),
-            const SizedBox(width: 8),
-            Text('Corner #${index + 2} added! Tap map or drag to position.'),
-          ],
+  /// Midpoint of each edge of the implicitly-closed polygon ring.
+  List<LatLng> _edgeMidpoints() {
+    final n = _boundaryPoints.length;
+    if (n < 2) return const [];
+    return [
+      for (var i = 0; i < n; i++)
+        LatLng(
+          (_boundaryPoints[i].latitude + _boundaryPoints[(i + 1) % n].latitude) / 2,
+          (_boundaryPoints[i].longitude + _boundaryPoints[(i + 1) % n].longitude) / 2,
         ),
-        backgroundColor: AppColors.primaryDark,
-        duration: const Duration(seconds: 2),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    ];
   }
 
-  void _removePoint(int index) {
-    if (_boundaryPoints.length <= 3) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Farm boundary requires at least 3 corners.'),
-          duration: Duration(seconds: 2),
-          behavior: SnackBarBehavior.floating,
+  /// Small distance chip rendered just above edge `i`.
+  Marker _edgeLabel(int i, MapCamera cam) {
+    final n = _boundaryPoints.length;
+    final p1 = _boundaryPoints[i];
+    final p2 = _boundaryPoints[(i + 1) % n];
+    final mid = LatLng((p1.latitude + p2.latitude) / 2, (p1.longitude + p2.longitude) / 2);
+    final labelPoint = cam.screenOffsetToLatLng(cam.latLngToScreenOffset(mid) - const Offset(0, 14));
+    final meters = const Distance().as(LengthUnit.Meter, p1, p2);
+    final text = meters >= 1000 ? '${(meters / 1000).toStringAsFixed(2)} km' : '${meters.round()} m';
+    return Marker(
+      point: labelPoint,
+      width: 54,
+      height: 18,
+      child: Container(
+        alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.65),
+          borderRadius: BorderRadius.circular(9),
         ),
-      );
-      return;
-    }
-    setState(() {
-      _boundaryPoints.removeAt(index);
-      if (_selectedCornerIndex == index) {
-        _selectedCornerIndex = null;
-      } else if (_selectedCornerIndex != null && _selectedCornerIndex! > index) {
-        _selectedCornerIndex = _selectedCornerIndex! - 1;
-      }
-      _areaAcres = GeocodingService.calculatePolygonAreaInAcres(_boundaryPoints);
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Removed corner #${index + 1}'),
-        duration: const Duration(seconds: 2),
-        behavior: SnackBarBehavior.floating,
+        child: Text(
+          text,
+          style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600),
+        ),
       ),
-    );
-  }
-
-  void _resetBoundary() {
-    _generateBoundaryPoints();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Boundary reset to default plot.'),
-        duration: Duration(seconds: 2),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
-  void _shiftBoundaryToCenter(LatLng newCenter) {
-    if (_boundaryPoints.isEmpty) {
-      _generateBoundaryPoints();
-      return;
-    }
-    final double dLat = newCenter.latitude - _latitude;
-    final double dLon = newCenter.longitude - _longitude;
-    setState(() {
-      _latitude = newCenter.latitude;
-      _longitude = newCenter.longitude;
-      _boundaryPoints = _boundaryPoints
-          .map((p) => LatLng(p.latitude + dLat, p.longitude + dLon))
-          .toList();
-      _areaAcres = GeocodingService.calculatePolygonAreaInAcres(_boundaryPoints);
-    });
-  }
-
-  void _showPresetsSheet() {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Boundary Tools & Presets', style: AppTypography.cardTitle),
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () => Navigator.pop(ctx),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Select a standard plot size or redraw custom field:',
-                  style: AppTypography.bodySmall,
-                ),
-                const SizedBox(height: 14),
-                ListTile(
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  tileColor: AppColors.surface,
-                  leading: const Icon(Icons.crop_square_rounded, color: AppColors.primary),
-                  title: const Text('1.0 Acre (Square Field)'),
-                  subtitle: const Text('~63m x 63m plot outline'),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    _setPresetPlot(1.0);
-                  },
-                ),
-                const SizedBox(height: 8),
-                ListTile(
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  tileColor: AppColors.surface,
-                  leading: const Icon(Icons.crop_landscape_rounded, color: AppColors.primary),
-                  title: const Text('2.5 Acres (Rectangular Field)'),
-                  subtitle: const Text('~100m x 100m plot outline'),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    _setPresetPlot(2.5);
-                  },
-                ),
-                const SizedBox(height: 8),
-                ListTile(
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  tileColor: AppColors.surface,
-                  leading: const Icon(Icons.crop_5_4_rounded, color: AppColors.primary),
-                  title: const Text('5.0 Acres (Large Commercial Plot)'),
-                  subtitle: const Text('~142m x 142m plot outline'),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    _setPresetPlot(5.0);
-                  },
-                ),
-                const SizedBox(height: 8),
-                ListTile(
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  tileColor: AppColors.primarySurface,
-                  leading: const Icon(Icons.draw_rounded, color: AppColors.primary),
-                  title: const Text('Redraw Field by Tapping Corners'),
-                  subtitle: const Text('Tap directly on satellite map to place each corner'),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    setState(() {
-                      _isDrawingMode = true;
-                      _drawnPoints.clear();
-                      _selectedCornerIndex = null;
-                    });
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Tap corners of your field on the map (min 3 corners).'),
-                        backgroundColor: AppColors.primaryDark,
-                        duration: Duration(seconds: 4),
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 8),
-              ],
-            ),
-          ),
-        );
-      },
     );
   }
 
@@ -416,36 +178,58 @@ class _FarmLocationScreenState extends State<FarmLocationScreen> {
     return GeocodingService.getCurrentGpsPosition();
   }
 
-  Future<void> _useCurrentLocation() async {
+  Future<void> _locateUser({bool showSnackbar = true}) async {
     setState(() => _isLocating = true);
 
+    // Desktop web has no GPS: the browser's Wi-Fi fix is an old anchor
+    // (often the router's registered location). With no GPS hardware,
+    // the current network's IP location is the honest answer.
     final pos = kIsWeb
         ? await _desktopWebPosition()
         : await GeocodingService.getCurrentGpsPosition();
     if (!mounted) return;
 
-    if (pos != null) {
+    if (pos == null) {
+      setState(() {
+        _isLocating = false;
+        _locationBlocked = true;
+      });
+      if (showSnackbar) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Precise location unavailable. Search a place or tap "Use My Location" again.'),
+            backgroundColor: Colors.orange,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      return;
+    }
+
+    final res = await GeocodingService.reverseGeocode(pos.latitude, pos.longitude);
+    if (!mounted) return;
+
+    setState(() {
+      _isLocating = false;
+      _locationBlocked = false;
+      _gpsPosition = LatLng(pos.latitude, pos.longitude);
+      _gpsAccuracyM = pos.accuracy;
       _latitude = pos.latitude;
       _longitude = pos.longitude;
+      if (res != null) {
+        _locationName = '${res.shortName}, ${res.district}';
+        _stateName = '${res.state}, India';
+        _searchController.text = _locationName;
+      } else {
+        _locationName = 'Lat: ${pos.latitude.toStringAsFixed(4)}, Lng: ${pos.longitude.toStringAsFixed(4)}';
+        _searchController.text = _locationName;
+      }
+      _generateBoundaryPoints();
+    });
 
-      final res = await GeocodingService.reverseGeocode(_latitude, _longitude);
-      if (!mounted) return;
+    _mapController.move(LatLng(pos.latitude, pos.longitude), 16.5);
 
-      setState(() {
-        if (res != null) {
-          _locationName = '${res.shortName}, ${res.district}';
-          _stateName = '${res.state}, India';
-          _searchController.text = _locationName;
-        } else {
-          _locationName = 'Lat: ${_latitude.toStringAsFixed(4)}, Lng: ${_longitude.toStringAsFixed(4)}';
-          _searchController.text = _locationName;
-        }
-        _generateBoundaryPoints();
-        _isLocating = false;
-      });
-
-      _mapController.move(LatLng(_latitude, _longitude), 16.5);
-
+    if (showSnackbar) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
@@ -458,15 +242,6 @@ class _FarmLocationScreenState extends State<FarmLocationScreen> {
           backgroundColor: AppColors.primaryDark,
           behavior: SnackBarBehavior.floating,
           duration: const Duration(seconds: 3),
-        ),
-      );
-    } else {
-      setState(() => _isLocating = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('GPS unavailable or permission denied. Type location in search bar.'),
-          backgroundColor: Colors.orange,
-          behavior: SnackBarBehavior.floating,
         ),
       );
     }
@@ -549,6 +324,10 @@ class _FarmLocationScreenState extends State<FarmLocationScreen> {
       body: SafeArea(
         child: Column(
           children: [
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
             // Progress Stepper (Step 1: Location)
             ProgressStepper(
               currentStep: 1,
@@ -615,7 +394,7 @@ class _FarmLocationScreenState extends State<FarmLocationScreen> {
 
                       // Use My Location Chip
                       GestureDetector(
-                        onTap: _isLocating ? null : _useCurrentLocation,
+                        onTap: _isLocating ? null : _locateUser,
                         child: Container(
                           height: 42,
                           padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -644,13 +423,14 @@ class _FarmLocationScreenState extends State<FarmLocationScreen> {
                                   fontWeight: FontWeight.w700,
                                   color: isDark ? AppColors.primaryLight : AppColors.primaryDark,
                                 ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+),
                     ],
                   ),
+                ),
+              ),
+
+            ],
+          ),
 
                   // Search Suggestions Overlay Dropdown
                   if (_searchResults.isNotEmpty)
@@ -685,12 +465,39 @@ class _FarmLocationScreenState extends State<FarmLocationScreen> {
                         }).toList(),
                       ),
                     ),
+
+                  // Blocked-location banner (denied / GPS unavailable)
+                  if (_locationBlocked && _gpsPosition == null) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: AppColors.warning.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: AppColors.warning.withValues(alpha: 0.4)),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.location_off_outlined, size: 16, color: AppColors.warning),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Precise location unavailable. Search a place or tap "Use My Location".',
+                              style: TextStyle(fontSize: 12, color: AppColors.warning),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
 
             // Real Live Interactive Map View (FlutterMap)
-            Expanded(
+            SizedBox(
+              height: MediaQuery.sizeOf(context).height * 0.52,
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20.0),
                 child: Container(
@@ -712,73 +519,125 @@ class _FarmLocationScreenState extends State<FarmLocationScreen> {
                             initialZoom: 16.2,
                             maxZoom: 19.0,
                             minZoom: 4.0,
-                            interactionOptions: InteractionOptions(
-                              flags: _activeDragIndex != null ? InteractiveFlag.none : InteractiveFlag.all,
-                            ),
-                            onPositionChanged: (camera, hasGesture) {
-                              if (hasGesture) {
-                                _onCameraMoved(camera.center);
+                            onTap: (tapPosition, point) {
+                              // Tap on map updates farm center & boundary
+                              setState(() {
+                                _latitude = point.latitude;
+                                _longitude = point.longitude;
+                                // Preserve any hand-drawn shape; only a tap on a
+                                // fresh (unmodified) boundary regenerates the plot.
+                                if (!_manualEdit) _generateBoundaryPoints();
+                              });
+                              GeocodingService.reverseGeocode(point.latitude, point.longitude).then((res) {
+                                if (res != null && mounted) {
+                                  setState(() {
+                                    _locationName = '${res.shortName}, ${res.district}';
+                                    _stateName = '${res.state}, India';
+                                    _searchController.text = _locationName;
+                                  });
+                                }
+                              });
+                            },
+                            onPointerDown: (event, point) {
+                              final cam = _mapController.camera;
+                              int? nearest;
+                              double bestDist = 20.0;
+                              for (var i = 0; i < _boundaryPoints.length; i++) {
+                                final off = cam.latLngToScreenOffset(_boundaryPoints[i]);
+                                final d = (off - event.localPosition).distance;
+                                if (d < bestDist) {
+                                  bestDist = d;
+                                  nearest = i;
+                                }
+                              }
+                              // No vertex grabbed: check the mid-edge handles.
+                              // Grabbing one subdivides the edge into two, then
+                              // drags the new corner (edge stays divided).
+                              if (nearest == null && _boundaryPoints.length < 12) {
+                                final mids = _edgeMidpoints();
+                                for (var i = 0; i < mids.length; i++) {
+                                  final off = cam.latLngToScreenOffset(mids[i]);
+                                  if ((off - event.localPosition).distance < 18) {
+                                    nearest = i + 1;
+                                    _boundaryPoints.insert(i + 1, point);
+                                    break;
+                                  }
+                                }
+                              }
+                              if (nearest != null) {
+                                setState(() {
+                                  _dragIndex = nearest;
+                                  _dragCameraCenter = cam.center;
+                                  _dragCameraZoom = cam.zoom;
+                                  _boundaryPoints[nearest!] = point;
+                                  _manualEdit = true;
+                                });
+                                _areaTimer?.cancel();
                               }
                             },
-                            onTap: (tapPosition, point) {
-                              if (_isDrawingMode) {
-                                setState(() {
-                                  _drawnPoints.add(point);
-                                  if (_drawnPoints.length >= 3) {
-                                    _boundaryPoints = List.from(_drawnPoints);
-                                    _areaAcres = GeocodingService.calculatePolygonAreaInAcres(_boundaryPoints);
-                                  }
-                                });
-                                return;
+                            onPointerMove: (event, point) {
+                              if (_dragIndex == null) return;
+                              setState(() => _boundaryPoints[_dragIndex!] = point);
+                              if (_dragCameraCenter != null) {
+                                _mapController.move(_dragCameraCenter!, _dragCameraZoom!);
                               }
-
-                              if (_selectedCornerIndex != null) {
-                                _moveSelectedCornerTo(point);
-                                return;
-                              }
-
-                              // Tap anywhere on map to relocate farm plot to that exact area
-                              _relocatePlotTo(point);
+                            },
+                            onPointerUp: (event, point) {
+                              if (_dragIndex == null) return;
+                              setState(() {
+                                _boundaryPoints[_dragIndex!] = point;
+                                _dragIndex = null;
+                              });
+                              _scheduleAreaRecalc();
+                            },
+                            onPointerCancel: (event, point) {
+                              _dragIndex = null;
+                              _scheduleAreaRecalc();
                             },
                           ),
                           children: [
-                            // Tile Layer (Satellite Esri vs OSM Street)
+                            // Tile Layer (Satellite)
                             TileLayer(
-                              urlTemplate: _useSatellite
-                                  ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
-                                  : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                              urlTemplate: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
                               maxZoom: 19,
                             ),
 
-                            // Polyline preview while in drawing mode (< 3 points)
-                            if (_isDrawingMode && _drawnPoints.length >= 2)
-                              PolylineLayer(
-                                polylines: [
-                                  Polyline(
-                                    points: _drawnPoints,
-                                    color: const Color(0xFF22C55E),
-                                    strokeWidth: 2.5,
+                            // Precise-location accuracy halo (Google-Maps-style)
+                            if (_gpsPosition != null && (_gpsAccuracyM ?? 0) > 0)
+                              CircleLayer(
+                                circles: [
+                                  CircleMarker(
+                                    point: _gpsPosition!,
+                                    radius: _gpsAccuracyM!,
+                                    useRadiusInMeter: true,
+                                    color: const Color(0x2687CEEB),
+                                    borderColor: const Color(0x5587CEEB),
+                                    borderStrokeWidth: 1,
+                                  ),
+                                ],
+                              ),
+
+                            // "You are here" indicator
+                            if (_gpsPosition != null)
+                              MarkerLayer(
+                                markers: [
+                                  Marker(
+                                    point: _gpsPosition!,
+                                    width: 150,
+                                    height: 74,
+                                    alignment: Alignment.bottomCenter,
+                                    child: _buildGpsIndicator(),
                                   ),
                                 ],
                               ),
 
                             // Real Farm Plot Polygon
-                            if (_isDrawingMode && _drawnPoints.length >= 3)
-                              PolygonLayer(
-                                polygons: [
-                                  Polygon(
-                                    points: _drawnPoints,
-                                    color: const Color(0xFF22C55E).withValues(alpha: 0.28),
-                                    borderColor: const Color(0xFF15803D),
-                                    borderStrokeWidth: 2.5,
-                                  ),
-                                ],
-                              )
-                            else if (!_isDrawingMode && _boundaryPoints.isNotEmpty)
+                            if (_boundaryPoints.isNotEmpty)
                               PolygonLayer(
                                 polygons: [
                                   Polygon(
                                     points: _boundaryPoints,
+                                    holePointsList: const [],
                                     color: const Color(0xFF22C55E).withValues(alpha: 0.28),
                                     borderColor: const Color(0xFF15803D),
                                     borderStrokeWidth: 2.5,
@@ -786,418 +645,120 @@ class _FarmLocationScreenState extends State<FarmLocationScreen> {
                                 ],
                               ),
 
-                            // Markers Layer
-                            if (_isDrawingMode)
+                            // Mid-edge handles: drag one to add a corner there
+                            if (_boundaryPoints.length >= 3)
                               MarkerLayer(
-                                markers: _drawnPoints.asMap().entries.map((entry) {
-                                  return Marker(
-                                    point: entry.value,
-                                    width: 32,
-                                    height: 32,
-                                    child: Center(
+                                markers: [
+                                  for (final mid in _edgeMidpoints())
+                                    Marker(
+                                      point: mid,
+                                      width: 16,
+                                      height: 16,
                                       child: Container(
-                                        width: 26,
-                                        height: 26,
                                         decoration: BoxDecoration(
-                                          color: const Color(0xFF15803D),
+                                          color: Colors.white,
                                           shape: BoxShape.circle,
-                                          border: Border.all(color: Colors.white, width: 2),
-                                          boxShadow: const [BoxShadow(color: Colors.black38, blurRadius: 4)],
-                                        ),
-                                        child: Center(
-                                          child: Text(
-                                            '${entry.key + 1}',
-                                            style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
-                                          ),
+                                          border: Border.all(color: const Color(0xFF15803D), width: 1.5),
+                                          boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 2)],
                                         ),
                                       ),
                                     ),
-                                  );
-                                }).toList(),
-                              )
-                            else
-                              MarkerLayer(
-                                markers: [
-                                  // 1. Interactive Selectable & Draggable Corner Markers
-                                  ..._boundaryPoints.asMap().entries.map((entry) {
-                                    final idx = entry.key;
-                                    final pt = entry.value;
-                                    final isDragging = _activeDragIndex == idx;
-                                    final isSelected = _selectedCornerIndex == idx;
-
-                                    return Marker(
-                                      point: pt,
-                                      width: 50,
-                                      height: 50,
-                                      child: GestureDetector(
-                                        behavior: HitTestBehavior.opaque,
-                                        onTap: () {
-                                          setState(() {
-                                            _selectedCornerIndex = isSelected ? null : idx;
-                                          });
-                                        },
-                                        onPanStart: (_) {
-                                          setState(() {
-                                            _activeDragIndex = idx;
-                                            _selectedCornerIndex = idx;
-                                          });
-                                        },
-                                        onPanUpdate: (details) {
-                                          _onMarkerDrag(idx, details);
-                                        },
-                                        onPanEnd: (_) {
-                                          setState(() => _activeDragIndex = null);
-                                        },
-                                        onPanCancel: () {
-                                          setState(() => _activeDragIndex = null);
-                                        },
-                                        onLongPress: _boundaryPoints.length > 3
-                                            ? () => _removePoint(idx)
-                                            : null,
-                                        child: Center(
-                                          child: AnimatedContainer(
-                                            duration: const Duration(milliseconds: 140),
-                                            width: isDragging ? 38 : (isSelected ? 36 : 28),
-                                            height: isDragging ? 38 : (isSelected ? 36 : 28),
-                                            decoration: BoxDecoration(
-                                              color: isDragging
-                                                  ? AppColors.primary
-                                                  : (isSelected ? const Color(0xFFF59E0B) : Colors.white),
-                                              shape: BoxShape.circle,
-                                              border: Border.all(
-                                                color: (isDragging || isSelected)
-                                                    ? Colors.white
-                                                    : const Color(0xFF15803D),
-                                                width: (isDragging || isSelected) ? 2.5 : 2,
-                                              ),
-                                              boxShadow: [
-                                                BoxShadow(
-                                                  color: isDragging
-                                                      ? AppColors.primary.withValues(alpha: 0.6)
-                                                      : (isSelected
-                                                          ? const Color(0xFFF59E0B).withValues(alpha: 0.6)
-                                                          : Colors.black26),
-                                                  blurRadius: (isDragging || isSelected) ? 8 : 4,
-                                                  spreadRadius: (isDragging || isSelected) ? 2 : 0,
-                                                ),
-                                              ],
-                                            ),
-                                            child: Center(
-                                              child: Text(
-                                                '${idx + 1}',
-                                                style: TextStyle(
-                                                  color: (isDragging || isSelected)
-                                                      ? Colors.white
-                                                      : const Color(0xFF15803D),
-                                                  fontSize: (isDragging || isSelected) ? 13 : 11,
-                                                  fontWeight: FontWeight.w800,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    );
-                                  }),
-
-                                  // 2. Midpoint "+" Add Corner Handles
-                                  if (_boundaryPoints.length >= 3)
-                                    ...List.generate(_boundaryPoints.length, (i) {
-                                      final p1 = _boundaryPoints[i];
-                                      final p2 = _boundaryPoints[(i + 1) % _boundaryPoints.length];
-                                      final mid = LatLng(
-                                        (p1.latitude + p2.latitude) / 2,
-                                        (p1.longitude + p2.longitude) / 2,
-                                      );
-                                      return Marker(
-                                        point: mid,
-                                        width: 26,
-                                        height: 26,
-                                        child: GestureDetector(
-                                          behavior: HitTestBehavior.opaque,
-                                          onTap: () => _insertPointAfter(i, mid),
-                                          child: Center(
-                                            child: Container(
-                                              width: 20,
-                                              height: 20,
-                                              decoration: BoxDecoration(
-                                                color: const Color(0xFF15803D),
-                                                shape: BoxShape.circle,
-                                                border: Border.all(color: Colors.white, width: 1.5),
-                                                boxShadow: const [
-                                                  BoxShadow(color: Colors.black26, blurRadius: 3),
-                                                ],
-                                              ),
-                                              child: const Center(
-                                                child: Icon(Icons.add, size: 12, color: Colors.white),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      );
-                                    }),
                                 ],
                               ),
+
+                            // Edge distance labels (lifted just above each edge)
+                            if (_boundaryPoints.length >= 2)
+                              Builder(builder: (context) {
+                                // Safe inside FlutterMap: the camera is
+                                // guaranteed attached in this subtree.
+                                final cam = MapCamera.of(context);
+                                return MarkerLayer(
+                                  markers: [
+                                    for (var i = 0; i < _boundaryPoints.length; i++)
+                                      _edgeLabel(i, cam),
+                                  ],
+                                );
+                              }),
+
+                            // Corner Boundary Marker Pins
+                            MarkerLayer(
+                              markers: _boundaryPoints.asMap().entries.map((entry) {
+                                final idx = entry.key;
+                                final pt = entry.value;
+                                return Marker(
+                                  point: pt,
+                                  width: 28,
+                                  height: 28,
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(color: const Color(0xFF15803D), width: 2),
+                                      boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4)],
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        '${idx + 1}',
+                                        style: const TextStyle(
+                                          color: Color(0xFF15803D),
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
                           ],
                         ),
 
-                        // Top Overlay Status & Mode Bar
-                        Positioned(
-                          top: 12,
-                          left: 12,
-                          right: 64,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.80),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: _isDrawingMode
-                                    ? const Color(0xFF22C55E)
-                                    : (_selectedCornerIndex != null
-                                        ? const Color(0xFFF59E0B)
-                                        : Colors.white24),
-                                width: 1,
-                              ),
-                            ),
-                            child: _isDrawingMode
-                                ? Row(
-                                    children: [
-                                      const Icon(Icons.edit_road_rounded, color: Color(0xFF4ADE80), size: 14),
-                                      const SizedBox(width: 6),
-                                      Expanded(
-                                        child: Text(
-                                          'Corners: ${_drawnPoints.length}/4+ • Tap field',
-                                          style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                      GestureDetector(
-                                        onTap: () {
-                                          setState(() {
-                                            _isDrawingMode = false;
-                                            if (_drawnPoints.length >= 3) {
-                                              _boundaryPoints = List.from(_drawnPoints);
-                                              _areaAcres = GeocodingService.calculatePolygonAreaInAcres(_boundaryPoints);
-                                            }
-                                          });
-                                        },
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFF22C55E),
-                                            borderRadius: BorderRadius.circular(12),
-                                          ),
-                                          child: const Text('Done ✓', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-                                        ),
-                                      ),
-                                    ],
-                                  )
-                                : (_selectedCornerIndex != null
-                                    ? Row(
-                                        children: [
-                                          const Icon(Icons.touch_app_rounded, color: Color(0xFFFBBF24), size: 14),
-                                          const SizedBox(width: 5),
-                                          Expanded(
-                                            child: Text(
-                                              'Corner #${_selectedCornerIndex! + 1}: Tap map to move or drag',
-                                              style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                          GestureDetector(
-                                            onTap: () => setState(() => _selectedCornerIndex = null),
-                                            child: Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                                              decoration: BoxDecoration(
-                                                color: Colors.white24,
-                                                borderRadius: BorderRadius.circular(10),
-                                              ),
-                                              child: const Text('✕', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-                                            ),
-                                          ),
-                                        ],
-                                      )
-                                    : const Row(
-                                        children: [
-                                          Icon(Icons.pan_tool_alt_rounded, color: Colors.white70, size: 13),
-                                          SizedBox(width: 6),
-                                          Expanded(
-                                            child: Text(
-                                              'Tap corner (1, 2..) to move • Or drag pin',
-                                              style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                        ],
-                                      )),
-                          ),
-                        ),
-
-                        // Map Controls (Satellite Switch, Zoom In, Zoom Out, Presets, Reset)
+                        // Map Controls (Zoom In, Zoom Out, Reset Boundary)
                         Positioned(
                           top: 12,
                           right: 12,
                           child: Column(
                             children: [
-                              _buildMapButton(
-                                _useSatellite ? Icons.satellite_alt_rounded : Icons.map_outlined,
-                                () => setState(() => _useSatellite = !_useSatellite),
-                                tooltip: _useSatellite ? 'Switch to Map' : 'Switch to Satellite',
-                              ),
-                              const SizedBox(height: 8),
                               _buildMapButton(Icons.add_rounded, () {
                                 final zoom = _mapController.camera.zoom + 0.5;
                                 _mapController.move(_mapController.camera.center, zoom);
-                              }, tooltip: 'Zoom In'),
+                              }),
                               const SizedBox(height: 6),
                               _buildMapButton(Icons.remove_rounded, () {
                                 final zoom = _mapController.camera.zoom - 0.5;
                                 _mapController.move(_mapController.camera.center, zoom);
-                              }, tooltip: 'Zoom Out'),
-                              const SizedBox(height: 8),
-                              _buildMapButton(
-                                Icons.tune_rounded,
-                                _showPresetsSheet,
-                                tooltip: 'Boundary Presets & Draw Tool',
-                              ),
+                              }),
                               const SizedBox(height: 6),
-                              _buildMapButton(
-                                Icons.restart_alt_rounded,
-                                _resetBoundary,
-                                tooltip: 'Reset Boundary',
-                              ),
+                              _buildMapButton(Icons.restart_alt_rounded, () {
+                                _areaTimer?.cancel();
+                                _generateBoundaryPoints();
+                              }, tooltip: 'Reset boundary'),
                             ],
                           ),
                         ),
 
-                        // Bottom Left: Corner Quick-Selector Bar
-                        if (!_isDrawingMode && _boundaryPoints.isNotEmpty)
-                          Positioned(
-                            bottom: 12,
-                            left: 12,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.82),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: Colors.white24),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Text(
-                                    'Corner: ',
-                                    style: TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.bold),
-                                  ),
-                                  ...List.generate(_boundaryPoints.length, (i) {
-                                    final isSel = _selectedCornerIndex == i;
-                                    return GestureDetector(
-                                      onTap: () {
-                                        setState(() {
-                                          _selectedCornerIndex = isSel ? null : i;
-                                        });
-                                      },
-                                      child: Container(
-                                        margin: const EdgeInsets.symmetric(horizontal: 2),
-                                        width: 22,
-                                        height: 22,
-                                        decoration: BoxDecoration(
-                                          color: isSel ? const Color(0xFFF59E0B) : const Color(0xFF15803D),
-                                          shape: BoxShape.circle,
-                                          border: Border.all(
-                                            color: isSel ? Colors.white : Colors.transparent,
-                                            width: 1.5,
-                                          ),
-                                        ),
-                                        child: Center(
-                                          child: Text(
-                                            '${i + 1}',
-                                            style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800),
-                                          ),
-                                        ),
-                                      ),
-                                    );
-                                  }),
-                                  const SizedBox(width: 4),
-                                  GestureDetector(
-                                    onTap: () {
-                                      if (_boundaryPoints.length >= 2) {
-                                        final p1 = _boundaryPoints.last;
-                                        final p2 = _boundaryPoints.first;
-                                        _insertPointAfter(
-                                          _boundaryPoints.length - 1,
-                                          LatLng((p1.latitude + p2.latitude) / 2, (p1.longitude + p2.longitude) / 2),
-                                        );
-                                      }
-                                    },
-                                    child: Container(
-                                      padding: const EdgeInsets.all(2),
-                                      decoration: const BoxDecoration(
-                                        color: Colors.white24,
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: const Icon(Icons.add, size: 14, color: Colors.white),
-                                    ),
-                                  ),
-                                ],
-                              ),
+                        // Instruction overlay tag at top left
+                        Positioned(
+                          top: 12,
+                          left: 12,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.70),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: const Row(
+                              children: [
+                                Icon(Icons.touch_app_outlined, color: Colors.white, size: 14),
+                                SizedBox(width: 4),
+Text(
+                                  'Drag numbered pins to reshape; drag white dots to add a corner',
+                                  style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w500),
+                                ),
+                              ],
                             ),
                           ),
-
-                        // Bottom Right: Precision Nudge Arrow Pad (when corner selected)
-                        if (_selectedCornerIndex != null && _selectedCornerIndex! < _boundaryPoints.length)
-                          Positioned(
-                            bottom: 12,
-                            right: 12,
-                            child: Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.85),
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(color: const Color(0xFFF59E0B), width: 1.5),
-                                boxShadow: const [BoxShadow(color: Colors.black45, blurRadius: 6)],
-                              ),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  GestureDetector(
-                                    onTap: () => _nudgeCorner(_selectedCornerIndex!, 2.0, 0.0),
-                                    child: _buildNudgeButton(Icons.keyboard_arrow_up_rounded),
-                                  ),
-                                  Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      GestureDetector(
-                                        onTap: () => _nudgeCorner(_selectedCornerIndex!, 0.0, -2.0),
-                                        child: _buildNudgeButton(Icons.keyboard_arrow_left_rounded),
-                                      ),
-                                      Container(
-                                        margin: const EdgeInsets.symmetric(horizontal: 2),
-                                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFFF59E0B),
-                                          borderRadius: BorderRadius.circular(6),
-                                        ),
-                                        child: Text(
-                                          '#${_selectedCornerIndex! + 1}',
-                                          style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800),
-                                        ),
-                                      ),
-                                      GestureDetector(
-                                        onTap: () => _nudgeCorner(_selectedCornerIndex!, 0.0, 2.0),
-                                        child: _buildNudgeButton(Icons.keyboard_arrow_right_rounded),
-                                      ),
-                                    ],
-                                  ),
-                                  GestureDetector(
-                                    onTap: () => _nudgeCorner(_selectedCornerIndex!, -2.0, 0.0),
-                                    child: _buildNudgeButton(Icons.keyboard_arrow_down_rounded),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -1224,14 +785,6 @@ class _FarmLocationScreenState extends State<FarmLocationScreen> {
                               fontSize: 18,
                               fontWeight: FontWeight.w700,
                               color: AppColors.primary,
-                            ),
-                          ),
-                          Text(
-                            '${_boundaryPoints.length} corners (editable)',
-                            style: AppTypography.bodySmall.copyWith(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFF15803D),
                             ),
                           ),
                         ],
@@ -1282,33 +835,19 @@ class _FarmLocationScreenState extends State<FarmLocationScreen> {
                     child: AppButton(
                       text: 'Next ›',
                       variant: AppButtonVariant.primary,
-                      onPressed: () async {
-                        double finalLat = _latitude;
-                        double finalLng = _longitude;
+                      onPressed: () {
+                        final stateClean = _stateName.contains(',') ? _stateName.split(',').first.trim() : _stateName;
+                        final districtClean = _locationName.contains(',') ? _locationName.split(',').first.trim() : _locationName;
 
-                        // Calculate actual centroid of the plotted farm boundary
-                        if (_boundaryPoints.isNotEmpty) {
-                          finalLat = _boundaryPoints.map((p) => p.latitude).reduce((a, b) => a + b) / _boundaryPoints.length;
-                          finalLng = _boundaryPoints.map((p) => p.longitude).reduce((a, b) => a + b) / _boundaryPoints.length;
-                        }
+                        // Guarantee exact acreage for whatever shape was last drawn,
+                        // even if the 700ms debounce hasn't fired yet.
+                        _areaTimer?.cancel();
+                        _areaAcres = GeocodingService.calculatePolygonAreaInAcres(_boundaryPoints);
 
-                        var districtClean = _locationName.contains(',') ? _locationName.split(',').first.trim() : _locationName.trim();
-                        var stateClean = _stateName.contains(',') ? _stateName.split(',').first.trim() : _stateName.trim();
-
-                        // If district is generic, empty, or hasn't refreshed, do an instant geocode lookup
-                        if (districtClean.isEmpty || districtClean.toLowerCase() == 'location' || districtClean.toLowerCase() == 'site') {
-                          final geo = await GeocodingService.reverseGeocode(finalLat, finalLng);
-                          if (geo != null) {
-                            districtClean = geo.district;
-                            stateClean = geo.state;
-                          }
-                        }
-
-                        // Save real live coordinates and calculated acreage
-                        if (!context.mounted) return;
+                        // Save real live coordinates, drawn boundary & calculated acreage
                         context.read<FarmProvider>().updateDraftLocation(
-                          latitude: finalLat,
-                          longitude: finalLng,
+                          latitude: _latitude,
+                          longitude: _longitude,
                           state: stateClean,
                           district: districtClean,
                           areaAcres: _areaAcres,
@@ -1322,6 +861,10 @@ class _FarmLocationScreenState extends State<FarmLocationScreen> {
                     ),
                   ),
                 ],
+              ),
+            ),
+                  ],
+                ),
               ),
             ),
 
@@ -1339,6 +882,51 @@ class _FarmLocationScreenState extends State<FarmLocationScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildGpsIndicator() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.96),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFF1565C0), width: 1),
+            boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2))],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'You are here',
+                style: TextStyle(
+                  color: Color(0xFF1565C0),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              Text(
+                '${_gpsPosition!.latitude.toStringAsFixed(5)}, ${_gpsPosition!.longitude.toStringAsFixed(5)}',
+                style: const TextStyle(color: Colors.black87, fontSize: 9),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 3),
+        Container(
+          width: 26,
+          height: 26,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: const Color(0xFF2196F3),
+            border: Border.all(color: Colors.white, width: 3),
+            boxShadow: const [BoxShadow(color: Colors.black38, blurRadius: 4, offset: Offset(0, 1))],
+          ),
+        ),
+      ],
     );
   }
 
@@ -1361,19 +949,6 @@ class _FarmLocationScreenState extends State<FarmLocationScreen> {
           child: Icon(icon, size: 20, color: AppColors.textPrimary),
         ),
       ),
-    );
-  }
-
-  Widget _buildNudgeButton(IconData icon) {
-    return Container(
-      width: 28,
-      height: 28,
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: Colors.white24),
-      ),
-      child: Icon(icon, size: 20, color: Colors.white),
     );
   }
 }

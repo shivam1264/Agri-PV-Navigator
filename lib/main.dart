@@ -39,11 +39,25 @@ class AgriPvNavigatorApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final settings = context.watch<SettingsProvider>();
+
     return MaterialApp.router(
       title: 'Agri-PV Navigator',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
+      theme: AppTheme.getLightTheme(highContrast: settings.highContrast),
+      darkTheme: AppTheme.getDarkTheme(highContrast: settings.highContrast),
+      themeMode: settings.themeMode,
       routerConfig: appRouter,
+      builder: (context, child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            textScaler: TextScaler.linear(settings.textScale),
+            highContrast: settings.highContrast,
+            disableAnimations: settings.reduceMotion,
+          ),
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
     );
   }
 }

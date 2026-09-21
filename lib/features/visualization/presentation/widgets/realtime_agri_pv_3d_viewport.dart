@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:vector_math/vector_math_64.dart' as v64;
 import '../../engine/scene_3d_controller.dart';
 import '../../engine/farm_model_controller.dart';
+import 'dart:convert';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'three_js_bridge.dart';
 
 class RealtimeAgriPv3dViewport extends StatefulWidget {
   final Scene3dController controller;
@@ -52,6 +55,25 @@ class _RealtimeAgriPv3dViewportState extends State<RealtimeAgriPv3dViewport> {
 
   @override
   Widget build(BuildContext context) {
+    if (kIsWeb) {
+      final config = widget.controller.designConfig;
+      final sun = widget.controller.sunController;
+      
+      final Map<String, dynamic> configMap = {
+        'farmL': 160.0,
+        'farmW': 160.0,
+        'tiltRad': config.panelTilt * (math.pi / 180.0),
+        'spacing': config.rowSpacing * 4.0, // Scaled for visual
+        'stiltH': config.panelHeight * 4.0,
+        'panelW': 4.2 * 4.0,
+        'panelChord': 2.2 * 4.0,
+        'sunAzimuthRad': sun.solarAzimuthRad,
+        'sunElevationRad': sun.solarAltitudeRad,
+      };
+
+      return ThreeJsBridge(configJson: jsonEncode(configMap));
+    }
+
     return GestureDetector(
       onScaleStart: (details) {
         _lastScale = 1.0;

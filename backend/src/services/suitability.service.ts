@@ -8,7 +8,7 @@ export class SuitabilityService {
   public static async getByFarm(userId: string, farmId: string): Promise<ISuitabilityAnalysis> {
     const farm = await FarmService.getFarmById(userId, farmId);
 
-    let analysis = await SuitabilityAnalysis.findOne({
+    let analysis: any = await SuitabilityAnalysis.findOne({
       farmId: farm._id,
       userId: new mongoose.Types.ObjectId(userId),
     });

@@ -14,7 +14,7 @@ export class SupportService {
       ];
     }
 
-    let faqs = await FaqItem.find(filter).sort({ order: 1 });
+    let faqs: any = await FaqItem.find(filter).sort({ order: 1 });
     if (faqs.length === 0 && (!category || category === 'All') && !search) {
       faqs = await this.seedDefaultFaqs();
     }

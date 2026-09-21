@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/storage/token_storage.dart';
 import '../../../shared/widgets/app_logo.dart';
 import '../../../shared/painters/agrivoltaic_3d_painter.dart';
 
@@ -14,22 +16,39 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
-  Timer? _timer;
-
   @override
   void initState() {
     super.initState();
-    _timer = Timer(const Duration(milliseconds: 2400), () {
-      if (mounted) {
-        context.go('/onboarding');
-      }
-    });
+    _navigate();
   }
 
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
+  Future<void> _navigate() async {
+    // Minimum splash display time
+    await Future.delayed(const Duration(milliseconds: 2400));
+    if (!mounted) return;
+
+    // 1. Check if already logged in
+    final hasToken = await TokenStorage.hasValidToken();
+    if (!mounted) return;
+
+    if (hasToken) {
+      // Already logged in → go straight to home
+      context.go('/home');
+      return;
+    }
+
+    // 2. Not logged in → check if onboarding was already seen
+    final prefs = await SharedPreferences.getInstance();
+    final onboardingDone = prefs.getBool('onboarding_done') ?? false;
+    if (!mounted) return;
+
+    if (onboardingDone) {
+      // Seen before → go directly to login
+      context.go('/login');
+    } else {
+      // First time → show onboarding
+      context.go('/onboarding');
+    }
   }
 
   @override
@@ -115,25 +134,22 @@ class _SplashScreenState extends State<SplashScreen> {
                         ),
                       ),
                       const SizedBox(height: 24),
-                      // Bottom pill: "Sustainable Farms. Brighter Tomorrows."
-                      GestureDetector(
-                        onTap: () => context.go('/onboarding'),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
-                          decoration: BoxDecoration(
-                            color: AppColors.primarySurface,
-                            borderRadius: BorderRadius.circular(100),
-                            border: Border.all(
-                              color: AppColors.primary.withValues(alpha: 0.3),
-                              width: 1.2,
-                            ),
+                      // Bottom pill
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: AppColors.primarySurface,
+                          borderRadius: BorderRadius.circular(100),
+                          border: Border.all(
+                            color: AppColors.primary.withValues(alpha: 0.3),
+                            width: 1.2,
                           ),
-                          child: Text(
-                            'Sustainable Farms. Brighter Tomorrows.',
-                            style: AppTypography.buttonText.copyWith(
-                              fontSize: 14,
-                              color: AppColors.primaryDark,
-                            ),
+                        ),
+                        child: Text(
+                          'Sustainable Farms. Brighter Tomorrows.',
+                          style: AppTypography.buttonText.copyWith(
+                            fontSize: 14,
+                            color: AppColors.primaryDark,
                           ),
                         ),
                       ),

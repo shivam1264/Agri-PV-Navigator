@@ -5,7 +5,11 @@ import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/bottom_nav_bar.dart';
-import '../../../services/storage/mock_data_service.dart';
+import 'package:provider/provider.dart';
+import '../../../providers/design_provider.dart';
+import '../../../providers/farm_provider.dart';
+import '../../../models/agri_pv_design.dart';
+import '../../../services/calculation/agri_pv_calculation_service.dart';
 
 class CompareDesignsScreen extends StatefulWidget {
   const CompareDesignsScreen({super.key});
@@ -15,12 +19,65 @@ class CompareDesignsScreen extends StatefulWidget {
 }
 
 class _CompareDesignsScreenState extends State<CompareDesignsScreen> {
-  int _selectedDesignIndex = 1; // Default is Design B (Best overall balance)
+  int _selectedDesignIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final farm = context.read<FarmProvider>().selectedFarm;
+      if (farm != null) {
+        context.read<DesignProvider>().loadDesignsForFarm(farm.id);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    final designs = MockDataService().compareDesigns;
-    final selectedDesign = designs[_selectedDesignIndex];
+    final designProv = context.watch<DesignProvider>();
+    final farm = context.watch<FarmProvider>().selectedFarm;
+    final area = farm?.areaAcres ?? 2.35;
+    final crop = farm?.crop ?? 'Wheat';
+
+    final List<AgriPvDesign> designs = designProv.designs.length >= 2
+        ? designProv.designs
+        : [
+            AgriPvCalculationService.generateDesign(
+              id: 'variant_elevated',
+              name: 'Elevated Stilt System',
+              areaAcres: area,
+              crop: crop,
+              mountingType: MountingType.elevated,
+              tiltDegrees: 20.0,
+              orientation: PanelOrientation.south,
+              rowSpacingMeters: 6.0,
+              panelCoveragePercent: 40.0,
+            ),
+            AgriPvCalculationService.generateDesign(
+              id: 'variant_tracker',
+              name: 'Single-Axis Tracker',
+              areaAcres: area,
+              crop: crop,
+              mountingType: MountingType.singleAxisTracker,
+              tiltDegrees: 25.0,
+              orientation: PanelOrientation.south,
+              rowSpacingMeters: 7.5,
+              panelCoveragePercent: 35.0,
+            ),
+            AgriPvCalculationService.generateDesign(
+              id: 'variant_high_clearance',
+              name: 'High Clearance Agro-PV',
+              areaAcres: area,
+              crop: crop,
+              mountingType: MountingType.elevated,
+              tiltDegrees: 18.0,
+              orientation: PanelOrientation.south,
+              rowSpacingMeters: 8.0,
+              panelCoveragePercent: 32.0,
+            ),
+          ];
+    final selectedIdx = _selectedDesignIndex < designs.length ? _selectedDesignIndex : 0;
+    final selectedDesign = designs[selectedIdx];
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -225,7 +282,10 @@ class _CompareDesignsScreenState extends State<CompareDesignsScreen> {
                     child: AppButton(
                       text: 'Next ›',
                       variant: AppButtonVariant.primary,
-                      onPressed: () => context.go('/techno-economic'),
+                      onPressed: () {
+                        context.read<DesignProvider>().selectDesign(selectedDesign);
+                        context.go('/techno-economic');
+                      },
                       height: 46,
                     ),
                   ),

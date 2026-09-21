@@ -5,14 +5,47 @@ import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/bottom_nav_bar.dart';
-import '../../../services/storage/mock_data_service.dart';
+import 'package:provider/provider.dart';
+import '../../../providers/economics_provider.dart';
+import '../../../providers/design_provider.dart';
+import '../../../models/economic_assessment.dart';
 
-class TechnoEconomicScreen extends StatelessWidget {
+class TechnoEconomicScreen extends StatefulWidget {
   const TechnoEconomicScreen({super.key});
 
   @override
+  State<TechnoEconomicScreen> createState() => _TechnoEconomicScreenState();
+}
+
+class _TechnoEconomicScreenState extends State<TechnoEconomicScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final activeDesign = context.read<DesignProvider>().activeDesign;
+      if (activeDesign != null) {
+        context.read<EconomicsProvider>().loadEconomics(activeDesign.id);
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final econ = MockDataService().defaultEconomicAssessment;
+    final econProv = context.watch<EconomicsProvider>();
+    final activeDesign = context.watch<DesignProvider>().activeDesign;
+
+    final econ = econProv.economics ??
+        EconomicAssessment(
+          pvCapacityKw: activeDesign?.pvCapacityKw ?? 245.0,
+          annualEnergyMwh: activeDesign?.annualEnergyMwh ?? 392.0,
+          projectCostCr: activeDesign?.projectCostCr ?? 1.05,
+          annualRevenueLakhs: ((activeDesign?.annualEnergyMwh ?? 392.0) * 1000 * 4.5 / 100000),
+          paybackPeriodYears: activeDesign?.paybackYears ?? 4.8,
+          netPresentValueLakhs: activeDesign?.npvLakhs ?? 48.2,
+          co2SavedTons: activeDesign?.co2SavedTons ?? 380.0,
+          internalRateOfReturn: 15.2,
+          levelizedCostOfEnergy: 2.92,
+        );
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -41,7 +74,7 @@ class TechnoEconomicScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Estimated 25-year lifetime metrics for 250 kW elevated stilt Agri-PV installation.',
+                      'Estimated 25-year lifetime metrics for ${econ.pvCapacityKw.toInt()} kW ${activeDesign?.mountingType.label ?? "elevated"} Agri-PV installation.',
                       style: AppTypography.bodySmall,
                     ),
                     const SizedBox(height: 16),

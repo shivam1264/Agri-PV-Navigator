@@ -5,16 +5,21 @@ import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/factor_card.dart';
+import 'package:provider/provider.dart';
 import '../../../shared/widgets/bottom_nav_bar.dart';
-import '../../../services/storage/mock_data_service.dart';
+import '../../../providers/suitability_provider.dart';
+import '../../../providers/farm_provider.dart';
+import '../../../services/calculation/agri_pv_calculation_service.dart';
 
 class SuitabilityDetailsScreen extends StatelessWidget {
   const SuitabilityDetailsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final mockService = MockDataService();
-    final assessment = mockService.defaultSiteAssessment;
+    final farm = context.watch<FarmProvider>().currentOrDraftFarm;
+    final suitProv = context.watch<SuitabilityProvider>();
+    final assessment = suitProv.assessment ??
+        AgriPvCalculationService.generateSiteAssessment(farm);
 
     return Scaffold(
       backgroundColor: AppColors.background,

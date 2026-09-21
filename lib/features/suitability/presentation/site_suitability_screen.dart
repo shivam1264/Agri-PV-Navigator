@@ -9,15 +9,36 @@ import '../../../shared/widgets/factor_card.dart';
 import '../../../shared/widgets/bottom_nav_bar.dart';
 import '../../../shared/painters/score_arc_painter.dart';
 import '../../../shared/painters/farm_boundary_painter.dart';
-import '../../../services/storage/mock_data_service.dart';
+import 'package:provider/provider.dart';
+import '../../../providers/suitability_provider.dart';
+import '../../../providers/farm_provider.dart';
+import '../../../services/calculation/agri_pv_calculation_service.dart';
 
-class SiteSuitabilityScreen extends StatelessWidget {
+class SiteSuitabilityScreen extends StatefulWidget {
   const SiteSuitabilityScreen({super.key});
 
   @override
+  State<SiteSuitabilityScreen> createState() => _SiteSuitabilityScreenState();
+}
+
+class _SiteSuitabilityScreenState extends State<SiteSuitabilityScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final farm = context.read<FarmProvider>().currentOrDraftFarm;
+      context.read<SuitabilityProvider>().loadSuitability(farm.id, fallbackFarm: farm);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final mockService = MockDataService();
-    final assessment = mockService.defaultSiteAssessment;
+    final farm = context.watch<FarmProvider>().currentOrDraftFarm;
+    final suitProv = context.watch<SuitabilityProvider>();
+
+    // Calculate real dynamic assessment for the exact farm location and parameters
+    final assessment = suitProv.assessment ??
+        AgriPvCalculationService.generateSiteAssessment(farm);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -86,7 +107,7 @@ class SiteSuitabilityScreen extends StatelessWidget {
                             Positioned.fill(
                               child: CustomPaint(
                                 painter: FarmBoundaryPainter(
-                                  areaAcres: 2.35,
+                                  areaAcres: farm.areaAcres,
                                   showPins: false,
                                   drawBackground: false,
                                 ),
@@ -101,13 +122,13 @@ class SiteSuitabilityScreen extends StatelessWidget {
                                   color: Colors.black.withValues(alpha: 0.65),
                                   borderRadius: BorderRadius.circular(20),
                                 ),
-                                child: const Row(
+                                child: Row(
                                   children: [
-                                    Icon(Icons.location_on, color: Colors.white, size: 13),
-                                    SizedBox(width: 4),
+                                    const Icon(Icons.location_on, color: Colors.white, size: 13),
+                                    const SizedBox(width: 4),
                                     Text(
-                                      'Your Farm (Phulpur)',
-                                      style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+                                      '${farm.name} (${farm.location})',
+                                      style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
                                     ),
                                   ],
                                 ),
@@ -197,7 +218,7 @@ class SiteSuitabilityScreen extends StatelessWidget {
                                 ),
                                 const SizedBox(height: 6),
                                 Text(
-                                  'High solar resource and favorable slope make this land optimal for elevated PV.',
+                                  assessment.summary,
                                   style: AppTypography.bodySmall.copyWith(fontSize: 11),
                                 ),
                               ],

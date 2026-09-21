@@ -4,6 +4,9 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/bottom_nav_bar.dart';
 
+import 'package:provider/provider.dart';
+import '../../../providers/support_provider.dart';
+
 class HelpSupportScreen extends StatefulWidget {
   const HelpSupportScreen({super.key});
 
@@ -13,6 +16,77 @@ class HelpSupportScreen extends StatefulWidget {
 
 class _HelpSupportScreenState extends State<HelpSupportScreen> {
   final _expandedMap = <int, bool>{};
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<SupportProvider>().loadFaqs();
+    });
+  }
+
+  void _showTicketDialog(BuildContext context) {
+    final subjectCtrl = TextEditingController();
+    final messageCtrl = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Contact Support'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: subjectCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Subject',
+                hintText: 'e.g. Question about solar clearance',
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: messageCtrl,
+              maxLines: 4,
+              decoration: const InputDecoration(
+                labelText: 'Message',
+                hintText: 'Describe your issue or request...',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+            onPressed: () async {
+              final subject = subjectCtrl.text.trim();
+              final msg = messageCtrl.text.trim();
+              if (subject.isEmpty || msg.isEmpty) return;
+
+              final messenger = ScaffoldMessenger.of(context);
+              Navigator.pop(ctx);
+
+              final success = await context.read<SupportProvider>().createTicket(
+                    subject: subject,
+                    message: msg,
+                  );
+
+              messenger.showSnackBar(
+                SnackBar(
+                  content: Text(success ? 'Support ticket submitted successfully!' : 'Failed to submit ticket'),
+                  backgroundColor: success ? AppColors.primary : Colors.red,
+                ),
+              );
+            },
+            child: const Text('Submit', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -121,9 +195,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
                           icon: Icons.email_outlined,
                           label: 'Email Support',
                           isPrimary: false,
-                          onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Opening support email...')),
-                          ),
+                          onTap: () => _showTicketDialog(context),
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -132,9 +204,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
                           icon: Icons.chat_bubble_outline_rounded,
                           label: 'Live Chat',
                           isPrimary: true,
-                          onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Connecting to live chat...')),
-                          ),
+                          onTap: () => _showTicketDialog(context),
                         ),
                       ),
                     ],

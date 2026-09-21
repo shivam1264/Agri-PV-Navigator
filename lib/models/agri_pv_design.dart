@@ -105,4 +105,72 @@ class AgriPvDesign {
       clearanceStatus: clearanceStatus ?? this.clearanceStatus,
     );
   }
+
+  factory AgriPvDesign.fromJson(Map<String, dynamic> json) {
+    final data = (json['design'] is Map<String, dynamic>)
+        ? json['design'] as Map<String, dynamic>
+        : json;
+
+    MountingType parseMounting(String? val) {
+      if (val == null) return MountingType.elevated;
+      return MountingType.values.firstWhere(
+        (e) => e.name == val,
+        orElse: () => MountingType.elevated,
+      );
+    }
+
+    PanelOrientation parseOrientation(String? val) {
+      if (val == null) return PanelOrientation.south;
+      return PanelOrientation.values.firstWhere(
+        (e) => e.name == val,
+        orElse: () => PanelOrientation.south,
+      );
+    }
+
+    return AgriPvDesign(
+      id: (data['id'] ?? data['_id'] ?? '').toString(),
+      name: data['name'] ?? 'Design',
+      mountingType: parseMounting(data['mountingType']),
+      tiltDegrees: (data['tiltDegrees'] as num?)?.toDouble() ?? 20.0,
+      orientation: parseOrientation(data['orientation']),
+      rowSpacingMeters: (data['rowSpacingMeters'] as num?)?.toDouble() ?? 6.0,
+      panelCoveragePercent: (data['panelCoveragePercent'] as num?)?.toDouble() ?? 40.0,
+      panelHeightMeters: (data['panelHeightMeters'] as num?)?.toDouble() ?? 2.8,
+      pvCapacityKw: (data['pvCapacityKw'] as num?)?.toDouble() ?? 0.0,
+      cultivableAreaPercent: (data['cultivableAreaPercent'] as num?)?.toDouble() ?? 0.0,
+      annualEnergyMwh: (data['annualEnergyMwh'] as num?)?.toDouble() ?? 0.0,
+      cropYieldPercent: (data['cropYieldPercent'] as num?)?.toDouble() ?? 0.0,
+      landEquivalentRatio: (data['landEquivalentRatio'] as num?)?.toDouble() ?? 0.0,
+      projectCostCr: (data['projectCostCr'] as num?)?.toDouble() ?? 0.0,
+      paybackYears: (data['paybackYears'] as num?)?.toDouble() ?? 0.0,
+      npvLakhs: (data['npvLakhs'] as num?)?.toDouble() ?? 0.0,
+      co2SavedTons: (data['co2SavedTons'] as num?)?.toDouble() ?? 0.0,
+      isMachineryCompatible: data['isMachineryCompatible'] ?? true,
+      clearanceStatus: data['clearanceStatus'] ?? 'Adequate Clearance',
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'mountingType': mountingType.name,
+      'tiltDegrees': tiltDegrees,
+      'orientation': orientation.name,
+      'rowSpacingMeters': rowSpacingMeters,
+      'panelCoveragePercent': panelCoveragePercent,
+      'panelHeightMeters': panelHeightMeters,
+      'pvCapacityKw': pvCapacityKw,
+      'cultivableAreaPercent': cultivableAreaPercent,
+      'annualEnergyMwh': annualEnergyMwh,
+      'cropYieldPercent': cropYieldPercent,
+      'landEquivalentRatio': landEquivalentRatio,
+      'projectCostCr': projectCostCr,
+      'paybackYears': paybackYears,
+      'npvLakhs': npvLakhs,
+      'co2SavedTons': co2SavedTons,
+      'isMachineryCompatible': isMachineryCompatible,
+      'clearanceStatus': clearanceStatus,
+    };
+  }
 }

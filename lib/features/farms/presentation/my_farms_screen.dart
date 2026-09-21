@@ -3,7 +3,8 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/farm_card.dart';
 import '../../../shared/widgets/bottom_nav_bar.dart';
-import '../../../services/storage/mock_data_service.dart';
+import 'package:provider/provider.dart';
+import '../../../providers/farm_provider.dart';
 
 class MyFarmsScreen extends StatefulWidget {
   const MyFarmsScreen({super.key});
@@ -17,6 +18,14 @@ class _MyFarmsScreenState extends State<MyFarmsScreen> {
   String _searchQuery = '';
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<FarmProvider>().loadFarms();
+    });
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
@@ -24,7 +33,8 @@ class _MyFarmsScreenState extends State<MyFarmsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final allFarms = MockDataService().farms;
+    final farmProv = context.watch<FarmProvider>();
+    final allFarms = farmProv.farms;
 
     final filteredFarms = allFarms.where((farm) {
       return farm.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
@@ -158,7 +168,10 @@ class _MyFarmsScreenState extends State<MyFarmsScreen> {
                         final farm = filteredFarms[index];
                         return FarmCard(
                           farm: farm,
-                          onTap: () => context.go('/site-suitability'),
+                          onTap: () {
+                            farmProv.selectFarm(farm);
+                            context.go('/farm-detail');
+                          },
                         );
                       },
                     ),

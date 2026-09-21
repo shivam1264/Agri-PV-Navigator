@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/bottom_nav_bar.dart';
-import '../../../services/storage/mock_data_service.dart';
+import 'package:provider/provider.dart';
+import '../../../providers/report_provider.dart';
+import '../../../providers/farm_provider.dart';
 import '../../../models/proposal_report.dart';
 
 class ReportsScreen extends StatefulWidget {
@@ -26,9 +29,33 @@ class _ReportsScreenState extends State<ReportsScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<ReportProvider>().loadReports();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final mock = MockDataService();
-    final allReports = mock.reports;
+    final reportProv = context.watch<ReportProvider>();
+    final farmProv = context.watch<FarmProvider>();
+    final allReports = List<ProposalReport>.from(reportProv.reports);
+
+    // Auto-populate proposal reports for each registered farm if not already present
+    for (final farm in farmProv.farms) {
+      if (!allReports.any((r) => r.farmName.toLowerCase() == farm.name.toLowerCase())) {
+        allReports.add(ProposalReport(
+          id: 'rep_${farm.id}',
+          title: '${farm.name} Agri-PV Feasibility & Proposal',
+          farmName: farm.name,
+          date: DateTime.now(),
+          type: ReportType.proposal,
+          fileSize: '1.4 MB',
+          downloadUrl: '/api/reports/download/proposal',
+        ));
+      }
+    }
 
     final filtered = allReports.where((r) {
       if (_selectedCategory == 'All') return true;
@@ -176,7 +203,24 @@ class _ReportCard extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () {},
+          onTap: () async {
+            final scaffold = ScaffoldMessenger.of(context);
+            scaffold.showSnackBar(
+              SnackBar(
+                content: Text('Downloading "${report.title}"...'),
+                duration: const Duration(seconds: 1),
+              ),
+            );
+            final path = await context.read<ReportProvider>().downloadAndOpenReport(report);
+            if (path != null) {
+              scaffold.showSnackBar(
+                SnackBar(
+                  content: Text('Opened: ${report.title}'),
+                  backgroundColor: AppColors.primary,
+                ),
+              );
+            }
+          },
           borderRadius: BorderRadius.circular(14),
           child: Padding(
             padding: const EdgeInsets.all(14),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/app_card.dart';
@@ -8,6 +9,35 @@ import '../../../shared/widgets/bottom_nav_bar.dart';
 
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
+
+  // Opens a URL in the browser; falls back to in-app dialog if can't launch
+  Future<void> _launchUrl(BuildContext context, String url, String title, String fallbackContent) async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      if (context.mounted) _showLegalDialog(context, title, fallbackContent);
+    }
+  }
+
+  void _showLegalDialog(BuildContext context, String title, String content) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Color(0xFF0F172A))),
+        content: SingleChildScrollView(
+          child: Text(content, style: const TextStyle(fontSize: 13.5, color: Color(0xFF334155), height: 1.6)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Close', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -89,11 +119,120 @@ class AboutScreen extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(vertical: 4),
                       child: Column(
                         children: [
-                          _buildLegalTile('Terms of Service', () {}),
+                          _buildLegalTile(
+                            context,
+                            'Terms of Service',
+                            () => _launchUrl(
+                              context,
+                              'https://agri-pv-navigator.example.com/terms',
+                              'Terms of Service',
+                              '''Terms of Service
+
+Last updated: January 1, 2026
+
+1. ACCEPTANCE OF TERMS
+By using Agri-PV Navigator, you agree to these Terms of Service. If you do not agree, please discontinue use immediately.
+
+2. USE OF SERVICE
+You may use this application to assess Agri-PV feasibility for your farms. You must not misuse the service or use it for unlawful purposes.
+
+3. DATA ACCURACY
+Results provided are estimates based on available data. Always consult a certified solar engineer before making investment decisions.
+
+4. INTELLECTUAL PROPERTY
+All content, algorithms, and designs are the intellectual property of Agri-PV Navigator and its licensors.
+
+5. LIMITATION OF LIABILITY
+We are not liable for any losses arising from reliance on the application's outputs.
+
+6. CONTACT
+For queries, contact support@agri-pv-navigator.example.com''',
+                            ),
+                          ),
                           const Divider(height: 1, color: AppColors.borderLight),
-                          _buildLegalTile('Privacy Policy', () {}),
+                          _buildLegalTile(
+                            context,
+                            'Privacy Policy',
+                            () => _launchUrl(
+                              context,
+                              'https://agri-pv-navigator.example.com/privacy',
+                              'Privacy Policy',
+                              '''Privacy Policy
+
+Last updated: January 1, 2026
+
+1. DATA WE COLLECT
+We collect farm location data, device information, and usage statistics to provide our services.
+
+2. HOW WE USE YOUR DATA
+Your data is used to calculate Agri-PV suitability scores, generate reports, and improve our algorithms. We do not sell your personal data to third parties.
+
+3. DATA STORAGE
+Your farm data is stored securely on encrypted servers. We retain data for the duration of your account and 30 days after deletion.
+
+4. YOUR RIGHTS
+You may request data export or deletion at any time by contacting support@agri-pv-navigator.example.com.
+
+5. COOKIES
+We use cookies for session management and analytics. You can opt out in App Settings.
+
+6. CONTACT
+For privacy concerns, email: privacy@agri-pv-navigator.example.com''',
+                            ),
+                          ),
                           const Divider(height: 1, color: AppColors.borderLight),
-                          _buildLegalTile('Open Source Licenses', () {}),
+                          _buildLegalTile(
+                            context,
+                            'Open Source Licenses',
+                            () => _showLegalDialog(
+                              context,
+                              'Open Source Licenses',
+                              '''This application is built with the following open-source packages:
+
+• Flutter SDK (BSD 3-Clause)
+• go_router (BSD 3-Clause)
+• provider (MIT)
+• fl_chart (MIT)
+• flutter_map (BSD 2-Clause)
+• geolocator (MIT)
+• shared_preferences (BSD 3-Clause)
+• flutter_secure_storage (BSD 3-Clause)
+• url_launcher (BSD 3-Clause)
+• http (BSD 3-Clause)
+• google_fonts (Apache 2.0)
+
+Full license texts are available at: https://pub.dev''',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Contact support
+                    AppCard(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 40, height: 40,
+                            decoration: BoxDecoration(color: AppColors.primarySurface, borderRadius: BorderRadius.circular(12)),
+                            child: const Icon(Icons.email_outlined, color: AppColors.primary, size: 20),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Contact Us', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF0F172A))),
+                                Text('support@agri-pv-navigator.com', style: AppTypography.bodySmall.copyWith(color: AppColors.primary)),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => launchUrl(Uri.parse('mailto:support@agri-pv-navigator.com')),
+                            icon: const Icon(Icons.open_in_new_rounded, size: 18, color: AppColors.primary),
+                          ),
                         ],
                       ),
                     ),
@@ -119,7 +258,7 @@ class AboutScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildLegalTile(String title, VoidCallback onTap) {
+  Widget _buildLegalTile(BuildContext context, String title, VoidCallback onTap) {
     return ListTile(
       title: Text(
         title,

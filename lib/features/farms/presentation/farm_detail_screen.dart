@@ -5,15 +5,45 @@ import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/bottom_nav_bar.dart';
+import 'package:provider/provider.dart';
 import '../../../shared/painters/farm_boundary_painter.dart';
-import '../../../services/storage/mock_data_service.dart';
+import '../../../providers/farm_provider.dart';
 
 class FarmDetailScreen extends StatelessWidget {
   const FarmDetailScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final farm = MockDataService().farms.first;
+    final farmProvider = context.watch<FarmProvider>();
+    final farm = farmProvider.selectedFarm ?? (farmProvider.farms.isNotEmpty ? farmProvider.farms.first : null);
+
+    if (farm == null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Farm Detail'),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded),
+            onPressed: () => context.go('/farms'),
+          ),
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text('No farm selected'),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: 160,
+                child: AppButton(
+                  text: 'Go to My Farms',
+                  onPressed: () => context.go('/farms'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       backgroundColor: AppColors.background,

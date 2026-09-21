@@ -59,9 +59,14 @@ class FarmCard extends StatelessWidget {
                         Image.asset(
                           farm.imagePath,
                           fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => Container(
-                            color: const Color(0xFF1B5E20),
-                            child: const Icon(Icons.agriculture_rounded, color: Colors.white70),
+                          errorBuilder: (context, error, stackTrace) => CustomPaint(
+                            painter: _FieldMiniPainter(),
+                            child: Container(
+                              color: const Color(0xFF1B5E20),
+                              child: const Center(
+                                child: Icon(Icons.agriculture_rounded, color: Colors.white70),
+                              ),
+                            ),
                           ),
                         ),
                         // Subtle gradient at bottom for badge legibility

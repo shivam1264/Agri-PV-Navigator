@@ -3,14 +3,151 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/bottom_nav_bar.dart';
-import '../../../services/storage/mock_data_service.dart';
+import 'package:provider/provider.dart';
+import '../../../providers/auth_provider.dart';
+import '../../../models/user_profile.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
+  // ── Edit Profile Bottom Sheet ──────────────────────────────────────────────
+  void _showEditProfileSheet(BuildContext context, UserProfile user) {
+    final nameCtrl = TextEditingController(text: user.name);
+    final phoneCtrl = TextEditingController(text: user.phone);
+    final formKey = GlobalKey<FormState>();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(sheetCtx).viewInsets.bottom),
+        child: Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+          child: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Drag handle
+                Center(
+                  child: Container(
+                    width: 40, height: 4,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE2E8F0),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Edit Profile',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                ),
+                const SizedBox(height: 20),
+
+                // Full Name
+                const Text('Full Name', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
+                const SizedBox(height: 6),
+                TextFormField(
+                  controller: nameCtrl,
+                  decoration: InputDecoration(
+                    hintText: 'Enter your full name',
+                    prefixIcon: const Icon(Icons.person_outline_rounded, size: 18, color: AppColors.primary),
+                    filled: true,
+                    fillColor: const Color(0xFFF8FAFC),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary)),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 13, horizontal: 12),
+                  ),
+                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Name is required' : null,
+                ),
+                const SizedBox(height: 16),
+
+                // Phone
+                const Text('Phone Number', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
+                const SizedBox(height: 6),
+                TextFormField(
+                  controller: phoneCtrl,
+                  keyboardType: TextInputType.phone,
+                  decoration: InputDecoration(
+                    hintText: 'e.g. +91 98765 43210',
+                    prefixIcon: const Icon(Icons.phone_outlined, size: 18, color: AppColors.primary),
+                    filled: true,
+                    fillColor: const Color(0xFFF8FAFC),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary)),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 13, horizontal: 12),
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // Save Button
+                Consumer<AuthProvider>(
+                  builder: (ctx, auth, _) => SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        elevation: 0,
+                      ),
+                      onPressed: auth.isLoading
+                          ? null
+                          : () async {
+                              if (!formKey.currentState!.validate()) return;
+                              final success = await ctx.read<AuthProvider>().updateProfile(
+                                    fullName: nameCtrl.text.trim(),
+                                    phoneNumber: phoneCtrl.text.trim(),
+                                  );
+                              if (sheetCtx.mounted) Navigator.pop(sheetCtx);
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(success ? 'Profile updated successfully!' : (auth.error ?? 'Failed to update profile')),
+                                    backgroundColor: success ? AppColors.primary : Colors.red,
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                              }
+                            },
+                      child: auth.isLoading
+                          ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                          : const Text('Save Changes', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final user = MockDataService().user;
+    final authProv = context.watch<AuthProvider>();
+    final user = authProv.user ??
+        const UserProfile(
+          id: '',
+          name: 'Farmer',
+          email: 'farmer@example.com',
+          phone: '',
+          initials: 'SP',
+          totalFarms: 0,
+          totalAreaAcres: 0.0,
+          designsCreated: 0,
+        );
 
     return Scaffold(
       backgroundColor: const Color(0xFFF4F7F4),
@@ -81,6 +218,13 @@ class ProfileScreen extends StatelessWidget {
                             user.email,
                             style: const TextStyle(fontSize: 13, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
                           ),
+                          if (user.phone.isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              user.phone,
+                              style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+                            ),
+                          ],
                           const SizedBox(height: 18),
                           // Stats
                           Row(
@@ -100,7 +244,11 @@ class ProfileScreen extends StatelessWidget {
 
                     // ── Menu Card ──
                     _menuSection([
-                      _MenuItem(icon: Icons.person_outline_rounded, label: 'My Profile', onTap: () {}),
+                      _MenuItem(
+                        icon: Icons.person_outline_rounded,
+                        label: 'My Profile',
+                        onTap: () => _showEditProfileSheet(context, user),
+                      ),
                       _MenuItem(icon: Icons.agriculture_outlined, label: 'My Farms', onTap: () => context.go('/farms')),
                       _MenuItem(icon: Icons.settings_outlined, label: 'App Settings', onTap: () => context.go('/settings')),
                       _MenuItem(icon: Icons.help_outline_rounded, label: 'Help & Support', onTap: () => context.go('/help-support')),
@@ -114,7 +262,12 @@ class ProfileScreen extends StatelessWidget {
                         icon: Icons.logout_rounded,
                         label: 'Logout',
                         isDestructive: true,
-                        onTap: () => context.go('/login'),
+                        onTap: () async {
+                          await context.read<AuthProvider>().logout();
+                          if (context.mounted) {
+                            context.go('/login');
+                          }
+                        },
                       ),
                     ]),
                     const SizedBox(height: 20),

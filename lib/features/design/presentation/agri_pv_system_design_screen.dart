@@ -12,6 +12,9 @@ import '../../../models/agri_pv_design.dart';
 import '../../visualization/engine/scene_3d_controller.dart';
 import '../../visualization/engine/camera_controller.dart';
 import '../../visualization/presentation/widgets/realtime_agri_pv_3d_viewport.dart';
+import 'package:provider/provider.dart';
+import '../../../providers/farm_provider.dart';
+import '../../../providers/design_provider.dart';
 
 class AgriPvSystemDesignScreen extends StatefulWidget {
   const AgriPvSystemDesignScreen({super.key});
@@ -50,12 +53,16 @@ class _AgriPvSystemDesignScreenState extends State<AgriPvSystemDesignScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Live calculation via pure AgriPvCalculationService
+    final farm = context.watch<FarmProvider>().selectedFarm;
+    final areaAcres = farm?.areaAcres ?? 2.35;
+    final crop = farm?.crop ?? 'Wheat';
+
+    // Live calculation via pure AgriPvCalculationService for real farm parameters
     final design = AgriPvCalculationService.generateDesign(
-      id: 'custom_config',
-      name: 'Custom System',
-      areaAcres: 2.35,
-      crop: 'Wheat',
+      id: 'design_${farm?.id ?? "custom"}',
+      name: '${farm?.name ?? "My Farm"} Agri-PV System',
+      areaAcres: areaAcres,
+      crop: crop,
       mountingType: _mountingType,
       tiltDegrees: _tiltDegrees,
       orientation: _orientation,
@@ -413,7 +420,10 @@ class _AgriPvSystemDesignScreenState extends State<AgriPvSystemDesignScreen> {
                     child: AppButton(
                       text: 'Next ›',
                       variant: AppButtonVariant.primary,
-                      onPressed: () => context.go('/ar-3d-view'),
+                      onPressed: () {
+                        context.read<DesignProvider>().setActiveDesign(design);
+                        context.go('/ar-3d-view');
+                      },
                       height: 46,
                     ),
                   ),

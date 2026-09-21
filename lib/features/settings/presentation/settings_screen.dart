@@ -3,22 +3,36 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/bottom_nav_bar.dart';
+import 'package:provider/provider.dart';
+import '../../../providers/settings_provider.dart';
 
-class SettingsScreen extends StatefulWidget {
+class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
-  @override
-  State<SettingsScreen> createState() => _SettingsScreenState();
-}
+  // ── Privacy & Security Bottom Sheet ─────────────────────────────────────
+  void _showPrivacySheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _PrivacySecuritySheet(),
+    );
+  }
 
-class _SettingsScreenState extends State<SettingsScreen> {
-  bool _notificationsEnabled = true;
-  String _theme = 'Light';
-  String _language = 'English';
-  final String _units = 'Metric (SI, acres)';
+  // ── Accessibility Bottom Sheet ───────────────────────────────────────────
+  void _showAccessibilitySheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _AccessibilitySheet(),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    final settings = context.watch<SettingsProvider>();
+
     return Scaffold(
       backgroundColor: const Color(0xFFF4F7F4),
       appBar: AppBar(
@@ -44,28 +58,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       iconBg: const Color(0xFFF3E8FF),
                       iconColor: const Color(0xFF7C3AED),
                       title: 'Theme',
-                      trailing: _theme,
-                      onTap: () {
-                        setState(() => _theme = _theme == 'Light' ? 'Dark' : 'Light');
-                      },
+                      trailing: settings.theme,
+                      onTap: () => settings.toggleTheme(),
                     ),
                     _SettingRow(
                       icon: Icons.language_rounded,
                       iconBg: const Color(0xFFE0F2FE),
                       iconColor: const Color(0xFF0284C7),
                       title: 'Language',
-                      trailing: _language,
-                      onTap: () {
-                        setState(() => _language = _language == 'English' ? 'Hindi (हिंदी)' : 'English');
-                      },
+                      trailing: settings.language,
+                      onTap: () => settings.toggleLanguage(),
                     ),
                     _SettingRow(
                       icon: Icons.straighten_rounded,
                       iconBg: const Color(0xFFFFF7ED),
                       iconColor: const Color(0xFFEA580C),
                       title: 'Units',
-                      trailing: _units,
-                      onTap: () {},
+                      trailing: settings.units,
+                      onTap: () => settings.cycleUnits(),
                     ),
                   ]),
 
@@ -77,8 +87,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       iconBg: const Color(0xFFF0FFF4),
                       iconColor: AppColors.primary,
                       title: 'Notifications',
-                      value: _notificationsEnabled,
-                      onChanged: (val) => setState(() => _notificationsEnabled = val),
+                      value: settings.notificationsEnabled,
+                      onChanged: (val) => settings.setNotificationsEnabled(val),
                     ),
                   ]),
 
@@ -90,14 +100,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       iconBg: const Color(0xFFFEF2F2),
                       iconColor: const Color(0xFFDC2626),
                       title: 'Privacy & Security',
-                      onTap: () {},
+                      onTap: () => _showPrivacySheet(context),
                     ),
                     _SettingRow(
                       icon: Icons.accessibility_new_rounded,
                       iconBg: const Color(0xFFEFF6FF),
                       iconColor: const Color(0xFF2563EB),
                       title: 'Accessibility',
-                      onTap: () {},
+                      onTap: () => _showAccessibilitySheet(context),
                     ),
                   ]),
 
@@ -141,6 +151,307 @@ class _SettingsScreenState extends State<SettingsScreen> {
             if (i > 0) const Divider(height: 1, color: Color(0xFFF1F5F9), indent: 56),
             rows[i],
           ],
+        ],
+      ),
+    );
+  }
+}
+
+// ── Privacy & Security Sheet ───────────────────────────────────────────────
+class _PrivacySecuritySheet extends StatefulWidget {
+  @override
+  State<_PrivacySecuritySheet> createState() => _PrivacySecuritySheetState();
+}
+
+class _PrivacySecuritySheetState extends State<_PrivacySecuritySheet> {
+  bool _locationSharing = true;
+  bool _analyticsEnabled = true;
+  bool _crashReporting = true;
+  bool _biometricLock = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 40, height: 4,
+              decoration: BoxDecoration(color: const Color(0xFFE2E8F0), borderRadius: BorderRadius.circular(2)),
+            ),
+          ),
+          const SizedBox(height: 20),
+          const Row(
+            children: [
+              Icon(Icons.security_outlined, color: Color(0xFFDC2626), size: 22),
+              SizedBox(width: 10),
+              Text('Privacy & Security', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF0F172A))),
+            ],
+          ),
+          const SizedBox(height: 20),
+          _toggleTile(
+            icon: Icons.location_on_outlined,
+            iconBg: const Color(0xFFF0FFF4),
+            iconColor: AppColors.primary,
+            title: 'Location Sharing',
+            subtitle: 'Allow app to access your location for farm mapping',
+            value: _locationSharing,
+            onChanged: (v) => setState(() => _locationSharing = v),
+          ),
+          const Divider(height: 1, color: Color(0xFFF1F5F9), indent: 50),
+          _toggleTile(
+            icon: Icons.analytics_outlined,
+            iconBg: const Color(0xFFE0F2FE),
+            iconColor: const Color(0xFF0284C7),
+            title: 'Usage Analytics',
+            subtitle: 'Help improve the app by sharing anonymous usage data',
+            value: _analyticsEnabled,
+            onChanged: (v) => setState(() => _analyticsEnabled = v),
+          ),
+          const Divider(height: 1, color: Color(0xFFF1F5F9), indent: 50),
+          _toggleTile(
+            icon: Icons.bug_report_outlined,
+            iconBg: const Color(0xFFFFF7ED),
+            iconColor: const Color(0xFFEA580C),
+            title: 'Crash Reporting',
+            subtitle: 'Automatically send crash reports to help fix bugs',
+            value: _crashReporting,
+            onChanged: (v) => setState(() => _crashReporting = v),
+          ),
+          const Divider(height: 1, color: Color(0xFFF1F5F9), indent: 50),
+          _toggleTile(
+            icon: Icons.fingerprint_rounded,
+            iconBg: const Color(0xFFF3E8FF),
+            iconColor: const Color(0xFF7C3AED),
+            title: 'Biometric Lock',
+            subtitle: 'Use fingerprint or face ID to unlock the app',
+            value: _biometricLock,
+            onChanged: (v) => setState(() => _biometricLock = v),
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                elevation: 0,
+              ),
+              onPressed: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Privacy settings saved'),
+                    backgroundColor: AppColors.primary,
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              },
+              child: const Text('Save Settings', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _toggleTile({
+    required IconData icon,
+    required Color iconBg,
+    required Color iconColor,
+    required String title,
+    required String subtitle,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        children: [
+          Container(
+            width: 38, height: 38,
+            decoration: BoxDecoration(color: iconBg, borderRadius: BorderRadius.circular(10)),
+            child: Icon(icon, color: iconColor, size: 18),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF1E293B))),
+                Text(subtitle, style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
+              ],
+            ),
+          ),
+          Transform.scale(
+            scale: 0.85,
+            child: Switch(value: value, onChanged: onChanged, activeThumbColor: AppColors.primary),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Accessibility Sheet ────────────────────────────────────────────────────
+class _AccessibilitySheet extends StatefulWidget {
+  @override
+  State<_AccessibilitySheet> createState() => _AccessibilitySheetState();
+}
+
+class _AccessibilitySheetState extends State<_AccessibilitySheet> {
+  bool _highContrast = false;
+  bool _largeText = false;
+  bool _reduceMotion = false;
+  double _textScale = 1.0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 40, height: 4,
+              decoration: BoxDecoration(color: const Color(0xFFE2E8F0), borderRadius: BorderRadius.circular(2)),
+            ),
+          ),
+          const SizedBox(height: 20),
+          const Row(
+            children: [
+              Icon(Icons.accessibility_new_rounded, color: Color(0xFF2563EB), size: 22),
+              SizedBox(width: 10),
+              Text('Accessibility', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF0F172A))),
+            ],
+          ),
+          const SizedBox(height: 20),
+
+          // Text Scale Slider
+          const Text('Text Size', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              const Icon(Icons.text_fields_rounded, size: 16, color: Color(0xFF94A3B8)),
+              Expanded(
+                child: Slider(
+                  value: _textScale,
+                  min: 0.8,
+                  max: 1.4,
+                  divisions: 6,
+                  activeColor: AppColors.primary,
+                  onChanged: (v) => setState(() => _textScale = v),
+                ),
+              ),
+              const Icon(Icons.text_fields_rounded, size: 22, color: Color(0xFF94A3B8)),
+            ],
+          ),
+          Text(
+            'Preview text at ${(_textScale * 100).round()}% scale',
+            style: TextStyle(fontSize: 13 * _textScale, color: const Color(0xFF1E293B)),
+          ),
+          const SizedBox(height: 16),
+          const Divider(color: Color(0xFFF1F5F9)),
+          const SizedBox(height: 8),
+
+          // Toggles
+          _toggleRow(
+            icon: Icons.contrast_rounded,
+            title: 'High Contrast Mode',
+            subtitle: 'Increase color contrast for better readability',
+            value: _highContrast,
+            onChanged: (v) => setState(() => _highContrast = v),
+          ),
+          const Divider(height: 1, color: Color(0xFFF1F5F9), indent: 50),
+          _toggleRow(
+            icon: Icons.format_size_rounded,
+            title: 'Large Touch Targets',
+            subtitle: 'Make buttons and interactive elements larger',
+            value: _largeText,
+            onChanged: (v) => setState(() => _largeText = v),
+          ),
+          const Divider(height: 1, color: Color(0xFFF1F5F9), indent: 50),
+          _toggleRow(
+            icon: Icons.animation_rounded,
+            title: 'Reduce Motion',
+            subtitle: 'Minimize animations and transitions',
+            value: _reduceMotion,
+            onChanged: (v) => setState(() => _reduceMotion = v),
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2563EB),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                elevation: 0,
+              ),
+              onPressed: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Accessibility settings saved'),
+                    backgroundColor: Color(0xFF2563EB),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              },
+              child: const Text('Save Settings', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _toggleRow({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        children: [
+          Container(
+            width: 38, height: 38,
+            decoration: BoxDecoration(color: const Color(0xFFEFF6FF), borderRadius: BorderRadius.circular(10)),
+            child: Icon(icon, color: const Color(0xFF2563EB), size: 18),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF1E293B))),
+                Text(subtitle, style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
+              ],
+            ),
+          ),
+          Transform.scale(
+            scale: 0.85,
+            child: Switch(value: value, onChanged: onChanged, activeThumbColor: const Color(0xFF2563EB)),
+          ),
         ],
       ),
     );

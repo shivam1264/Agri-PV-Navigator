@@ -6,6 +6,9 @@ import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_text_field.dart';
 import '../../../shared/widgets/app_logo.dart';
 
+import 'package:provider/provider.dart';
+import '../../../providers/auth_provider.dart';
+
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -15,25 +18,55 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _identifierController = TextEditingController(text: 'shivam@example.com');
-  final TextEditingController _passwordController = TextEditingController(text: '••••••••');
+  final TextEditingController _nameController = TextEditingController(text: 'Shivam Patel');
+  final TextEditingController _passwordController = TextEditingController(text: 'Password123!');
+  bool _isSignUp = false;
   bool _obscurePassword = true;
-  bool _isLoading = false;
 
   @override
   void dispose() {
     _identifierController.dispose();
+    _nameController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
-  void _handleSignIn() {
-    setState(() => _isLoading = true);
-    Future.delayed(const Duration(milliseconds: 600), () {
-      if (mounted) {
-        setState(() => _isLoading = false);
-        context.go('/home');
-      }
-    });
+  Future<void> _handleAuth() async {
+    final email = _identifierController.text.trim();
+    final password = _passwordController.text.trim();
+    final authProvider = context.read<AuthProvider>();
+
+    if (email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter both email and password')),
+      );
+      return;
+    }
+
+    bool success;
+    if (_isSignUp) {
+      final name = _nameController.text.trim();
+      success = await authProvider.register(
+        fullName: name.isNotEmpty ? name : 'User',
+        email: email,
+        password: password,
+      );
+    } else {
+      success = await authProvider.login(email, password);
+    }
+
+    if (!mounted) return;
+
+    if (success) {
+      context.go('/home');
+    } else if (authProvider.error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(authProvider.error!),
+          backgroundColor: Colors.red.shade700,
+        ),
+      );
+    }
   }
 
   @override
@@ -56,7 +89,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 16),
 
                 Text(
-                  'Welcome Back',
+                  _isSignUp ? 'Create Account' : 'Welcome Back',
                   style: AppTypography.screenHeading.copyWith(
                     fontSize: 26,
                     fontWeight: FontWeight.w800,
@@ -64,7 +97,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Sign in to continue',
+                  _isSignUp ? 'Sign up to manage your Agri-PV farms' : 'Sign in to continue',
                   style: AppTypography.bodyMedium,
                 ),
                 const SizedBox(height: 32),
@@ -86,6 +119,15 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   child: Column(
                     children: [
+                      if (_isSignUp) ...[
+                        AppTextField(
+                          label: 'Full Name',
+                          hint: 'Enter your full name',
+                          controller: _nameController,
+                          prefixIcon: Icons.person_outline_rounded,
+                        ),
+                        const SizedBox(height: 16),
+                      ],
                       AppTextField(
                         label: 'Email or Mobile Number',
                         hint: 'Enter your email or phone',
@@ -109,31 +151,34 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                       const SizedBox(height: 10),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton(
-                          onPressed: () {},
-                          style: TextButton.styleFrom(
-                            padding: EdgeInsets.zero,
-                            minimumSize: Size.zero,
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
-                          child: Text(
-                            'Forgot Password?',
-                            style: AppTypography.labelSmall.copyWith(
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.w600,
+                      if (!_isSignUp)
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: () {},
+                            style: TextButton.styleFrom(
+                              padding: EdgeInsets.zero,
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            child: Text(
+                              'Forgot Password?',
+                              style: AppTypography.labelSmall.copyWith(
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
                         ),
-                      ),
                       const SizedBox(height: 20),
 
-                      // Sign In Button
-                      AppButton(
-                        text: 'Sign In',
-                        onPressed: _handleSignIn,
-                        isLoading: _isLoading,
+                      // Sign In / Sign Up Button
+                      Consumer<AuthProvider>(
+                        builder: (context, auth, _) => AppButton(
+                          text: _isSignUp ? 'Create Account' : 'Sign In',
+                          onPressed: _handleAuth,
+                          isLoading: auth.isLoading,
+                        ),
                       ),
                       const SizedBox(height: 20),
 
@@ -165,7 +210,11 @@ class _LoginScreenState extends State<LoginScreen> {
                             backgroundColor: Colors.white,
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
                           ),
-                          onPressed: _handleSignIn,
+                          onPressed: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Google Sign-in is not configured yet. Please use email/password.')),
+                            );
+                          },
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
@@ -225,13 +274,13 @@ class _LoginScreenState extends State<LoginScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      'Don\'t have an account? ',
+                      _isSignUp ? 'Already have an account? ' : 'Don\'t have an account? ',
                       style: AppTypography.bodySmall,
                     ),
                     GestureDetector(
-                      onTap: () => context.go('/home'),
+                      onTap: () => setState(() => _isSignUp = !_isSignUp),
                       child: Text(
-                        'Sign Up',
+                        _isSignUp ? 'Sign In' : 'Sign Up',
                         style: AppTypography.bodySmall.copyWith(
                           color: AppColors.primary,
                           fontWeight: FontWeight.w700,

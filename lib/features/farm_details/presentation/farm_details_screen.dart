@@ -7,7 +7,10 @@ import '../../../shared/widgets/app_text_field.dart';
 import '../../../shared/widgets/app_dropdown.dart';
 import '../../../shared/widgets/progress_stepper.dart';
 import '../../../shared/widgets/bottom_nav_bar.dart';
-import '../../../services/storage/mock_data_service.dart';
+import 'package:provider/provider.dart';
+import '../../../providers/farm_provider.dart';
+import '../../../providers/suitability_provider.dart';
+import '../../../providers/design_provider.dart';
 
 class FarmDetailsScreen extends StatefulWidget {
   const FarmDetailsScreen({super.key});
@@ -17,8 +20,8 @@ class FarmDetailsScreen extends StatefulWidget {
 }
 
 class _FarmDetailsScreenState extends State<FarmDetailsScreen> {
-  final TextEditingController _nameController = TextEditingController(text: 'My Farm');
-  final TextEditingController _areaController = TextEditingController(text: '2.35');
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _areaController = TextEditingController();
 
   String _selectedCrop = 'Wheat';
   String _selectedSoil = 'Loamy';
@@ -27,27 +30,79 @@ class _FarmDetailsScreenState extends State<FarmDetailsScreen> {
   String _selectedGrid = '2.4 km';
 
   @override
+  void initState() {
+    super.initState();
+    final draft = context.read<FarmProvider>().draftFarm;
+    if (draft['name'] != null && (draft['name'] as String).isNotEmpty) {
+      _nameController.text = draft['name'];
+    } else if (draft['district'] != null && (draft['district'] as String).isNotEmpty) {
+      _nameController.text = 'Farm at ${draft['district']}';
+    } else {
+      _nameController.text = 'My Solar Farm';
+    }
+
+    if (draft['areaAcres'] != null) {
+      final area = (draft['areaAcres'] as num).toDouble();
+      _areaController.text = area.toStringAsFixed(2);
+    } else {
+      _areaController.text = '3.50';
+    }
+
+    if (draft['cropType'] != null) _selectedCrop = draft['cropType'];
+    if (draft['soilType'] != null) _selectedSoil = draft['soilType'];
+    if (draft['slope'] != null) _selectedSlope = draft['slope'];
+    if (draft['irrigation'] != null) _selectedIrrigation = draft['irrigation'];
+    if (draft['gridProximityKm'] != null) _selectedGrid = '${draft['gridProximityKm']} km';
+  }
+
+  @override
   void dispose() {
     _nameController.dispose();
     _areaController.dispose();
     super.dispose();
   }
 
-  void _onNext() {
-    final mock = MockDataService();
-    mock.currentDraftFarm = mock.currentDraftFarm.copyWith(
-      name: _nameController.text.trim().isNotEmpty ? _nameController.text.trim() : 'My Farm',
-      areaAcres: double.tryParse(_areaController.text) ?? 2.35,
-      crop: _selectedCrop,
+  Future<void> _onNext() async {
+    final farmProv = context.read<FarmProvider>();
+    final areaVal = double.tryParse(_areaController.text.trim()) ?? 2.35;
+    final nameVal = _nameController.text.trim().isNotEmpty
+        ? _nameController.text.trim()
+        : 'Farm at ${farmProv.draftFarm['district'] ?? 'Site'}';
+
+    final gridKm = double.tryParse(_selectedGrid.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 2.4;
+
+    farmProv.updateDraftDetails(
+      name: nameVal,
+      areaAcres: areaVal,
+      cropType: _selectedCrop,
       soilType: _selectedSoil,
       slope: _selectedSlope,
       irrigation: _selectedIrrigation,
+      irrigationSource: _selectedIrrigation,
+      gridProximityKm: gridKm,
     );
-    context.go('/site-suitability');
+
+    final farm = await farmProv.submitDraftFarm();
+    if (!mounted) return;
+
+    if (farm != null) {
+      // Pre-load suitability and designs with live fallbackFarm
+      context.read<SuitabilityProvider>().loadSuitability(farm.id, fallbackFarm: farm);
+      context.read<DesignProvider>().loadDesignsForFarm(farm.id);
+      context.go('/site-suitability');
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(farmProv.error ?? 'Failed to save farm. Please try again.'),
+          backgroundColor: Colors.red.shade700,
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final farmProv = context.watch<FarmProvider>();
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -224,7 +279,8 @@ class _FarmDetailsScreenState extends State<FarmDetailsScreen> {
                     child: AppButton(
                       text: 'Next ›',
                       variant: AppButtonVariant.primary,
-                      onPressed: _onNext,
+                      onPressed: farmProv.isLoading ? null : _onNext,
+                      isLoading: farmProv.isLoading,
                       height: 46,
                     ),
                   ),

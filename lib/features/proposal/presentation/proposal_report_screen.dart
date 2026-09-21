@@ -7,6 +7,11 @@ import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/progress_stepper.dart';
 import '../../../shared/widgets/bottom_nav_bar.dart';
 
+import 'package:provider/provider.dart';
+import '../../../providers/report_provider.dart';
+import '../../../providers/farm_provider.dart';
+import '../../../providers/design_provider.dart';
+
 class ProposalReportScreen extends StatefulWidget {
   const ProposalReportScreen({super.key});
 
@@ -17,18 +22,39 @@ class ProposalReportScreen extends StatefulWidget {
 class _ProposalReportScreenState extends State<ProposalReportScreen> {
   bool _isDownloading = false;
 
-  void _handleDownload() {
+  Future<void> _handleDownload() async {
+    final reportProv = context.read<ReportProvider>();
+    final farm = context.read<FarmProvider>().currentOrDraftFarm;
+    final design = context.read<DesignProvider>().activeDesign;
+
     setState(() => _isDownloading = true);
-    Future.delayed(const Duration(milliseconds: 900), () {
+
+    final report = await reportProv.generateReport(
+      farmId: farm.id,
+      designId: design?.id ?? 'default_design',
+      farmName: farm.name,
+      type: 'proposal',
+    );
+
+    if (!mounted) return;
+
+    if (report != null) {
+      final path = await reportProv.downloadAndOpenReport(report);
       if (mounted) {
         setState(() => _isDownloading = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Row(
               children: [
-                Icon(Icons.check_circle, color: Colors.white),
-                SizedBox(width: 8),
-                Text('Agri-PV_Proposal_Farm_A.pdf saved to Downloads'),
+                const Icon(Icons.check_circle, color: Colors.white),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    path != null ? 'Report downloaded & opened: ${report.title}' : 'Report generated successfully',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               ],
             ),
             backgroundColor: AppColors.primary,
@@ -36,7 +62,15 @@ class _ProposalReportScreenState extends State<ProposalReportScreen> {
           ),
         );
       }
-    });
+    } else {
+      setState(() => _isDownloading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(reportProv.error ?? 'Failed to generate PDF report'),
+          backgroundColor: Colors.red.shade700,
+        ),
+      );
+    }
   }
 
   void _handleShare() {
@@ -182,7 +216,17 @@ class _ProposalReportScreenState extends State<ProposalReportScreen> {
                     child: AppButton(
                       text: 'Next ›',
                       variant: AppButtonVariant.primary,
-                      onPressed: () => context.go('/success'),
+                      onPressed: () {
+                        final farm = context.read<FarmProvider>().currentOrDraftFarm;
+                        final design = context.read<DesignProvider>().activeDesign;
+                        context.read<ReportProvider>().generateReport(
+                          farmId: farm.id,
+                          designId: design?.id ?? 'default_design',
+                          farmName: farm.name,
+                          type: 'proposal',
+                        );
+                        context.go('/success');
+                      },
                       height: 46,
                     ),
                   ),

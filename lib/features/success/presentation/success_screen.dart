@@ -1,14 +1,58 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../providers/farm_provider.dart';
+import '../../../providers/design_provider.dart';
+import '../../../providers/report_provider.dart';
+import '../../../providers/dashboard_provider.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/bottom_nav_bar.dart';
 
-class SuccessScreen extends StatelessWidget {
+class SuccessScreen extends StatefulWidget {
   const SuccessScreen({super.key});
 
   @override
+  State<SuccessScreen> createState() => _SuccessScreenState();
+}
+
+class _SuccessScreenState extends State<SuccessScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final farm = context.read<FarmProvider>().currentOrDraftFarm;
+      final design = context.read<DesignProvider>().activeDesign;
+
+      // Auto-generate proposal report for the completed farm & design
+      context.read<ReportProvider>().generateReport(
+        farmId: farm.id,
+        designId: design?.id ?? 'design_primary',
+        farmName: farm.name,
+        type: 'proposal',
+      );
+
+      // Refresh farms and dashboard metrics
+      context.read<FarmProvider>().loadFarms();
+      context.read<DashboardProvider>().loadDashboard();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final farm = context.watch<FarmProvider>().currentOrDraftFarm;
+    final design = context.watch<DesignProvider>().activeDesign;
+
+    final capacity = design != null
+        ? '${design.pvCapacityKw.toStringAsFixed(0)} kW'
+        : '${(farm.areaAcres * 110).round()} kW';
+    final energy = design != null
+        ? '${design.annualEnergyMwh.toStringAsFixed(0)} MWh'
+        : '${(farm.areaAcres * 165).round()} MWh';
+    final co2 = design != null
+        ? '${design.co2SavedTons.toStringAsFixed(0)} Tons'
+        : '${(farm.areaAcres * 140).round()} Tons';
+
     return Scaffold(
       backgroundColor: const Color(0xFFF4F7F4),
       body: SafeArea(
@@ -53,11 +97,11 @@ class SuccessScreen extends StatelessWidget {
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 12),
-                      const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 12),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
                         child: Text(
-                          'Your Agri-PV journey has begun.\nTogether for sustainable farms and\na brighter tomorrow.',
-                          style: TextStyle(
+                          'Your Agri-PV project for ${farm.name} is configured.\nTogether for sustainable farms and\na brighter tomorrow.',
+                          style: const TextStyle(
                             fontSize: 15,
                             color: Color(0xFF64748B),
                             height: 1.55,
@@ -68,7 +112,7 @@ class SuccessScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 40),
 
-                      // ── Stats Summary ──
+                      // ── Real Stats Summary ──
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
@@ -80,11 +124,11 @@ class SuccessScreen extends StatelessWidget {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceAround,
                           children: [
-                            _successStat('250 kW', 'PV Capacity'),
+                            _successStat(capacity, 'PV Capacity'),
                             Container(height: 32, width: 1, color: const Color(0xFFE2E8F0)),
-                            _successStat('400 MWh', 'Energy/yr'),
+                            _successStat(energy, 'Energy/yr'),
                             Container(height: 32, width: 1, color: const Color(0xFFE2E8F0)),
-                            _successStat('420 Tons', 'CO₂ Saved'),
+                            _successStat(co2, 'CO₂ Saved'),
                           ],
                         ),
                       ),

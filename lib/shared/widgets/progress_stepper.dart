@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../core/theme/app_colors.dart';
-import '../../core/theme/app_typography.dart';
 
 class ProgressStepper extends StatelessWidget {
   final int currentStep; // 1 to 4

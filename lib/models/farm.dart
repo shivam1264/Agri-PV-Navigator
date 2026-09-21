@@ -1,7 +1,20 @@
 enum FarmStatus {
   active,
   draft,
-  analyzed,
+  analyzed;
+
+  static FarmStatus fromString(String? val) {
+    switch (val?.toLowerCase()) {
+      case 'active':
+        return FarmStatus.active;
+      case 'analyzed':
+        return FarmStatus.analyzed;
+      default:
+        return FarmStatus.draft;
+    }
+  }
+
+  String get name => toString().split('.').last;
 }
 
 class Farm {
@@ -20,6 +33,8 @@ class Farm {
   final String currentLandUse;
   final List<String> coordinates;
   final String imagePath;
+  final double? latitude;
+  final double? longitude;
 
   const Farm({
     required this.id,
@@ -37,12 +52,84 @@ class Farm {
     this.currentLandUse = 'Agriculture',
     this.coordinates = const [],
     this.imagePath = 'assets/images/farm_wheat.jpg',
+    this.latitude,
+    this.longitude,
   });
 
   String get suitabilityLabel {
     if (suitabilityScore >= 80) return 'Suitable';
     if (suitabilityScore >= 60) return 'Moderately Suitable';
     return 'Marginal';
+  }
+
+  factory Farm.fromJson(Map<String, dynamic> json) {
+    final data = (json['farm'] is Map<String, dynamic>) ? json['farm'] as Map<String, dynamic> : json;
+
+    double? lat;
+    double? lng;
+
+    if (data['location'] is Map<String, dynamic> &&
+        data['location']['coordinates'] is List &&
+        (data['location']['coordinates'] as List).length >= 2) {
+      final coords = data['location']['coordinates'] as List;
+      lng = (coords[0] as num).toDouble();
+      lat = (coords[1] as num).toDouble();
+    } else {
+      if (data['latitude'] is num) lat = (data['latitude'] as num).toDouble();
+      if (data['longitude'] is num) lng = (data['longitude'] as num).toDouble();
+    }
+
+    final rawCoordinates = data['coordinates'];
+    List<String> parsedCoords = [];
+    if (rawCoordinates is List) {
+      parsedCoords = rawCoordinates.map((e) => e.toString()).toList();
+    }
+
+    final idVal = (data['id'] ?? data['_id'] ?? '').toString();
+
+    return Farm(
+      id: idVal,
+      name: data['name'] ?? 'My Farm',
+      areaAcres: (data['areaAcres'] is num) ? (data['areaAcres'] as num).toDouble() : 2.35,
+      crop: data['crop'] ?? data['cropType'] ?? 'Wheat',
+      location: data['location'] is String ? data['location'] : (data['locationName'] ?? 'Phulpur, Prayagraj'),
+      state: data['state'] ?? 'Uttar Pradesh, India',
+      suitabilityScore: (data['suitabilityScore'] is num) ? (data['suitabilityScore'] as num).toInt() : 80,
+      status: FarmStatus.fromString(data['status']),
+      soilType: data['soilType'] ?? 'Loamy',
+      slope: data['slope'] ?? '< 2% (Almost flat)',
+      irrigation: data['irrigation'] ?? 'Available',
+      gridProximityKm: (data['gridProximityKm'] is num) ? (data['gridProximityKm'] as num).toDouble() : 2.4,
+      currentLandUse: data['currentLandUse'] ?? 'Agriculture',
+      coordinates: parsedCoords,
+      imagePath: data['imagePath'] ?? 'assets/images/farm_wheat.jpg',
+      latitude: lat,
+      longitude: lng,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'areaAcres': areaAcres,
+      'cropType': crop,
+      'crop': crop,
+      'locationName': location,
+      'location': location,
+      'state': state,
+      'suitabilityScore': suitabilityScore,
+      'status': status.name,
+      'soilType': soilType,
+      'slope': slope,
+      'irrigation': irrigation,
+      'gridProximityKm': gridProximityKm,
+      'currentLandUse': currentLandUse,
+      'coordinates': coordinates,
+      'imagePath': imagePath,
+      'latitude': latitude,
+      'longitude': longitude,
+    };
   }
 
   Farm copyWith({
@@ -60,6 +147,9 @@ class Farm {
     double? gridProximityKm,
     String? currentLandUse,
     List<String>? coordinates,
+    String? imagePath,
+    double? latitude,
+    double? longitude,
   }) {
     return Farm(
       id: id ?? this.id,
@@ -76,6 +166,9 @@ class Farm {
       gridProximityKm: gridProximityKm ?? this.gridProximityKm,
       currentLandUse: currentLandUse ?? this.currentLandUse,
       coordinates: coordinates ?? this.coordinates,
+      imagePath: imagePath ?? this.imagePath,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
     );
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/app_button.dart';
@@ -54,6 +55,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     super.dispose();
   }
 
+  Future<void> _markDoneAndGoLogin() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('onboarding_done', true);
+    if (mounted) context.go('/login');
+  }
+
   void _onNext() {
     if (_currentPage < _pages.length - 1) {
       _pageController.nextPage(
@@ -61,7 +68,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         curve: Curves.easeInOut,
       );
     } else {
-      context.go('/login');
+      _markDoneAndGoLogin();
     }
   }
 
@@ -73,7 +80,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         automaticallyImplyLeading: false,
         actions: [
           TextButton(
-            onPressed: () => context.go('/login'),
+            onPressed: _markDoneAndGoLogin,
             child: Text(
               'Skip',
               style: AppTypography.buttonText.copyWith(

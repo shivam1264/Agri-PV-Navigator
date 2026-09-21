@@ -1,22 +1,56 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_typography.dart';
-import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/farm_card.dart';
 import '../../../shared/widgets/bottom_nav_bar.dart';
 import '../../../shared/widgets/app_logo.dart';
-import '../../../services/storage/mock_data_service.dart';
-import '../../../shared/painters/agrivoltaic_3d_painter.dart';
+import 'package:provider/provider.dart';
+import '../../../providers/auth_provider.dart';
+import '../../../providers/farm_provider.dart';
+import '../../../providers/dashboard_provider.dart';
+import '../../../providers/notification_provider.dart';
+import '../../../models/user_profile.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
   @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<DashboardProvider>().loadDashboard();
+      context.read<FarmProvider>().loadFarms();
+      context.read<NotificationProvider>().loadNotifications();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final mockService = MockDataService();
-    final user = mockService.user;
-    final farms = mockService.farms;
+    final auth = context.watch<AuthProvider>();
+    final dashboard = context.watch<DashboardProvider>();
+    final farmProv = context.watch<FarmProvider>();
+    final notifProv = context.watch<NotificationProvider>();
+
+    final user = auth.user ??
+        const UserProfile(
+          id: '',
+          name: 'Farmer',
+          email: '',
+          phone: '',
+          initials: 'SP',
+          totalFarms: 0,
+          totalAreaAcres: 0.0,
+          designsCreated: 0,
+        );
+    final farms = farmProv.farms;
+    final totalArea = dashboard.summary.totalAreaAcres > 0
+        ? dashboard.summary.totalAreaAcres
+        : farms.fold<double>(0, (sum, f) => sum + f.areaAcres);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF4F7F4),
@@ -37,7 +71,7 @@ class HomeScreen extends StatelessWidget {
                   // Notification bell
                   _NavIconButton(
                     icon: Icons.notifications_none_rounded,
-                    badgeColor: const Color(0xFF22C55E),
+                    badgeColor: notifProv.unreadCount > 0 ? const Color(0xFF22C55E) : null,
                     onTap: () {},
                   ),
                   const SizedBox(width: 10),
@@ -184,7 +218,9 @@ class HomeScreen extends StatelessWidget {
                     Row(
                       children: [
                         _StatItem(
-                          value: '${user.totalFarms}',
+                          value: dashboard.summary.totalFarms > 0
+                              ? '${dashboard.summary.totalFarms}'
+                              : '${farms.length}',
                           label: 'Total Farms',
                           icon: Icons.agriculture_rounded,
                           iconColor: const Color(0xFF16A34A),
@@ -193,7 +229,9 @@ class HomeScreen extends StatelessWidget {
                         ),
                         const SizedBox(width: 10),
                         _StatItem(
-                          value: '${user.totalAreaAcres}',
+                          value: dashboard.summary.totalAreaAcres > 0
+                              ? dashboard.summary.totalAreaAcres.toStringAsFixed(1)
+                              : farms.fold<double>(0, (sum, f) => sum + f.areaAcres).toStringAsFixed(1),
                           label: 'Total Area',
                           unit: 'ac',
                           icon: Icons.crop_free_rounded,
@@ -202,7 +240,7 @@ class HomeScreen extends StatelessWidget {
                         ),
                         const SizedBox(width: 10),
                         _StatItem(
-                          value: '${user.designsCreated}',
+                          value: '${dashboard.summary.designsCreated > 0 ? dashboard.summary.designsCreated : (farms.isNotEmpty ? farms.length * 3 : 0)}',
                           label: 'PV Designs',
                           icon: Icons.solar_power_rounded,
                           iconColor: const Color(0xFF0284C7),
@@ -276,10 +314,40 @@ class HomeScreen extends StatelessWidget {
                     const SizedBox(height: 10),
 
                     // Farm Cards
-                    ...farms.take(2).map((farm) => FarmCard(
-                          farm: farm,
-                          onTap: () => context.go('/site-suitability'),
-                        )),
+                    if (farms.isEmpty)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: Column(
+                          children: [
+                            const Icon(Icons.agriculture_outlined, size: 36, color: Color(0xFF94A3B8)),
+                            const SizedBox(height: 8),
+                            const Text(
+                              'No farms added yet',
+                              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: Color(0xFF334155)),
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'Add your first farm location to start Agri-PV analysis',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                            ),
+                          ],
+                        ),
+                      )
+                    else
+                      ...farms.take(2).map((farm) => FarmCard(
+                            farm: farm,
+                            onTap: () {
+                              farmProv.selectFarm(farm);
+                              context.go('/farm-detail');
+                            },
+                          )),
                     const SizedBox(height: 16),
 
                     // ── Environmental Impact Card ──
@@ -310,13 +378,13 @@ class HomeScreen extends StatelessWidget {
                               _ImpactItem(
                                 icon: Icons.bolt_rounded,
                                 color: AppColors.solar,
-                                value: '430 MWh',
+                                value: totalArea > 0 ? '${(totalArea * 165).round()} MWh' : '0 MWh',
                                 label: 'Clean Energy/yr',
                               ),
                               _ImpactItem(
                                 icon: Icons.forest_rounded,
                                 color: AppColors.primary,
-                                value: '420 Tons',
+                                value: totalArea > 0 ? '${(totalArea * 155).round()} Tons' : '0 Tons',
                                 label: 'CO₂ Saved/yr',
                               ),
                             ],
@@ -346,8 +414,6 @@ class HomeScreen extends StatelessWidget {
       ),
     );
   }
-
-  Widget _vertDivider() => Container(height: 32, width: 1, color: const Color(0xFFE2E8F0));
 }
 
 // ── Reusable sub-widgets ──

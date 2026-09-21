@@ -55,7 +55,6 @@ class _ShadowSimulationScreenState extends State<ShadowSimulationScreen> {
   @override
   Widget build(BuildContext context) {
     final sun = _sceneController.sunController;
-    final camera = _sceneController.cameraController;
 
     return Scaffold(
       backgroundColor: AppColors.background,

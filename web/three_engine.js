@@ -12,7 +12,8 @@ window.initAgriPvScene = function(containerId) {
     // 1. Setup Scene
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0x87CEEB); // Sky blue
-    scene.fog = new THREE.FogExp2(0x87CEEB, 0.015);
+    // Reduced fog density significantly to make the view crystal clear
+    scene.fog = new THREE.FogExp2(0x87CEEB, 0.0015);
 
     // 2. Setup Camera
     camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 1000);
@@ -43,6 +44,11 @@ window.initAgriPvScene = function(containerId) {
     const sky = new THREE.Sky();
     sky.scale.setScalar(450000);
     scene.add(sky);
+    
+    // Generate environment map from sky for realistic glassy reflections on panels
+    const pmremGenerator = new THREE.PMREMGenerator(renderer);
+    pmremGenerator.compileEquirectangularShader();
+    scene.environment = pmremGenerator.fromScene(sky).texture;
 
     const sunSphere = new THREE.Vector3();
     
@@ -68,9 +74,10 @@ window.initAgriPvScene = function(containerId) {
     // 6. Ground Plane (Enhanced Realism)
     const textureLoader = new THREE.TextureLoader();
     textureLoader.load('assets/assets/images/farm_satellite.jpg', function(texture) {
-        texture.wrapS = THREE.RepeatWrapping;
-        texture.wrapT = THREE.RepeatWrapping;
-        texture.repeat.set(2, 2);
+        // Use ClampToEdge so the satellite image spans the field continuously without repeating
+        texture.wrapS = THREE.ClampToEdgeWrapping;
+        texture.wrapT = THREE.ClampToEdgeWrapping;
+        texture.repeat.set(1, 1);
         texture.encoding = THREE.sRGBEncoding;
         
         const groundGeo = new THREE.PlaneGeometry(160, 160, 64, 64);
@@ -82,6 +89,7 @@ window.initAgriPvScene = function(containerId) {
             metalness: 0.02 
         });
         const ground = new THREE.Mesh(groundGeo, groundMat);
+        ground.name = 'farmGround';
         ground.rotation.x = -Math.PI / 2;
         ground.receiveShadow = true;
         scene.add(ground);
@@ -105,10 +113,29 @@ window.initAgriPvScene = function(containerId) {
     animate();
 };
 
+let currentGroundImageUrl = null;
+
 window.updateAgriPvScene = function(configJson) {
     if (!scene) return;
     try {
         const config = JSON.parse(configJson);
+        
+        if (config.customBackgroundImageUrl && config.customBackgroundImageUrl !== currentGroundImageUrl) {
+            currentGroundImageUrl = config.customBackgroundImageUrl;
+            const ground = scene.getObjectByName('farmGround');
+            if (ground) {
+                new THREE.TextureLoader().load(currentGroundImageUrl, function(texture) {
+                    texture.wrapS = THREE.ClampToEdgeWrapping;
+                    texture.wrapT = THREE.ClampToEdgeWrapping;
+                    texture.repeat.set(1, 1);
+                    texture.encoding = THREE.sRGBEncoding;
+                    ground.material.map = texture;
+                    ground.material.bumpMap = texture;
+                    ground.material.needsUpdate = true;
+                });
+            }
+        }
+
         buildProceduralFarm(config);
     } catch (e) {
         console.error("Failed to parse AgriPV Config", e);
@@ -152,8 +179,9 @@ function buildProceduralFarm(config) {
         scene.add(boundaryLine);
     }
     
+    const panelGap = 2.0; // Increased space between panels horizontally
     const rows = Math.floor(farmL / spacing);
-    const cols = Math.floor(farmW / (panelW + 0.5));
+    const cols = Math.floor(farmW / (panelW + panelGap));
     const totalPanels = rows * cols;
     if (totalPanels <= 0) return;
 
@@ -163,18 +191,18 @@ function buildProceduralFarm(config) {
     
     const panelMat = new THREE.MeshPhysicalMaterial({
         map: cellTex,
-        color: 0xffffff, // White allows texture to show properly
-        metalness: 0.5,  // Less pure mirror
-        roughness: 0.2,
-        clearcoat: 0.8,
-        clearcoatRoughness: 0.1,
-        reflectivity: 0.5,
-        envMapIntensity: 1.0
+        color: 0xffffff,
+        metalness: 0.9, // High metalness for solar cells
+        roughness: 0.1, // Smooth glass surface
+        clearcoat: 1.0, // Full clearcoat for glass reflection
+        clearcoatRoughness: 0.05,
+        reflectivity: 1.0,
+        envMapIntensity: 2.5 // Boost environment reflections significantly
     });
     const metalMat = new THREE.MeshStandardMaterial({
-        color: 0x90A4AE, // Galvanized steel
-        metalness: 0.8,
-        roughness: 0.4
+        color: 0xcfd4d9, // Brighter Galvanized steel
+        metalness: 0.9,
+        roughness: 0.3
     });
     const concreteMat = new THREE.MeshStandardMaterial({
         color: 0x888888, // Concrete
@@ -236,13 +264,14 @@ function buildProceduralFarm(config) {
     let stiltIndex = 0;
     let cropIndex = 0;
 
-    const startX = -((cols - 1) * (panelW + 0.5)) / 2;
+    const panelGapLocal = 2.0;
+    const startX = -((cols - 1) * (panelW + panelGapLocal)) / 2;
     const startZ = -((rows - 1) * spacing) / 2;
 
     for (let r = 0; r < rows; r++) {
         const z = startZ + r * spacing;
         for (let c = 0; c < cols; c++) {
-            const x = startX + c * (panelW + 0.5);
+            const x = startX + c * (panelW + panelGapLocal);
             
             // Mask placement using Point-in-Polygon (Raycasting)
             if (polygon && !pointInPolygon(x, z, polygon)) {
@@ -255,8 +284,8 @@ function buildProceduralFarm(config) {
             dummy.updateMatrix();
             instancedPanels.setMatrixAt(index, dummy.matrix);
             
-            // Frame is just slightly offset
-            dummy.position.set(x, stiltH - 0.01, z);
+            // Frame is just slightly offset downwards to reveal the panel surface
+            dummy.position.set(x, stiltH - 0.02, z);
             dummy.updateMatrix();
             instancedFrames.setMatrixAt(index, dummy.matrix);
             
@@ -377,47 +406,72 @@ function pointInPolygon(x, z, polygon) {
 // Procedural Solar Cell Texture
 function createSolarCellTexture() {
     const canvas = document.createElement('canvas');
-    canvas.width = 512;
-    canvas.height = 256;
+    canvas.width = 1024;
+    canvas.height = 1024;
     const ctx = canvas.getContext('2d');
     
-    // Base blue polycrystalline color with slight gradient
-    const grad = ctx.createLinearGradient(0, 0, 512, 256);
-    grad.addColorStop(0, '#1565C0'); // Bright blue
-    grad.addColorStop(1, '#0D47A1'); // Deep blue
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, 512, 256);
+    // Base classic polycrystalline blue color
+    ctx.fillStyle = '#0D47A1'; // Bright deep blue 
+    ctx.fillRect(0, 0, 1024, 1024);
     
-    ctx.strokeStyle = '#E0E0E0';
-    ctx.lineWidth = 1;
-    ctx.globalAlpha = 0.8;
+    // Draw cells
+    const cols = 6;
+    const rows = 12;
+    const cellW = 1024 / cols;
+    const cellH = 1024 / rows;
+    const gap = 4;
     
-    for (let y = 0; y <= 256; y += 32) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(512, y);
-        ctx.stroke();
-    }
-    for (let x = 0; x <= 512; x += 32) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, 256);
-        ctx.stroke();
-    }
-    ctx.lineWidth = 4;
-    ctx.globalAlpha = 0.95;
-    for (let x = 64; x < 512; x += 128) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, 256);
-        ctx.stroke();
+    ctx.fillStyle = '#1976D2'; // Very vibrant bright blue cell base
+    ctx.strokeStyle = '#e2e8f0'; // silver busbars
+    
+    for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+            const x = c * cellW + gap;
+            const y = r * cellH + gap;
+            const w = cellW - gap * 2;
+            const h = cellH - gap * 2;
+            
+            // Draw chamfered cell
+            ctx.beginPath();
+            const radius = 8;
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + w - radius, y);
+            ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
+            ctx.lineTo(x + w, y + h - radius);
+            ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
+            ctx.lineTo(x + radius, y + h);
+            ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
+            ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.fill();
+            
+            // Thin vertical busbars inside cell
+            ctx.lineWidth = 1.5;
+            for(let i=1; i<5; i++) {
+                ctx.beginPath();
+                ctx.moveTo(x + (w/5)*i, y);
+                ctx.lineTo(x + (w/5)*i, y + h);
+                ctx.stroke();
+            }
+            
+            // Thinner horizontal lines
+            ctx.lineWidth = 0.5;
+            for(let j=1; j<20; j++) {
+                ctx.beginPath();
+                ctx.moveTo(x, y + (h/20)*j);
+                ctx.lineTo(x + w, y + (h/20)*j);
+                ctx.stroke();
+            }
+        }
     }
     
     const texture = new THREE.CanvasTexture(canvas);
     texture.wrapS = THREE.RepeatWrapping;
     texture.wrapT = THREE.RepeatWrapping;
+    // Map this 6x12 cell grid directly 1:1 on the panel to prevent flat gray stretching
+    texture.repeat.set(1, 1); 
     texture.needsUpdate = true;
-    texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+    if (typeof renderer !== 'undefined' && renderer) texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
     return texture;
 }
 

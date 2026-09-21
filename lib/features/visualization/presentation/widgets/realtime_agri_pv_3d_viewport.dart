@@ -13,6 +13,7 @@ class RealtimeAgriPv3dViewport extends StatefulWidget {
   final bool showSunGizmo;
   final bool enableGestures;
   final VoidCallback? onTap;
+  final String? customBackgroundImageUrl;
 
   const RealtimeAgriPv3dViewport({
     super.key,
@@ -21,6 +22,7 @@ class RealtimeAgriPv3dViewport extends StatefulWidget {
     this.showSunGizmo = true,
     this.enableGestures = true,
     this.onTap,
+    this.customBackgroundImageUrl,
   });
 
   @override
@@ -72,6 +74,7 @@ class _RealtimeAgriPv3dViewportState extends State<RealtimeAgriPv3dViewport> {
         'sunAzimuthRad': sun.solarAzimuthRad,
         'sunElevationRad': sun.solarAltitudeRad,
         'boundaryCoords': widget.boundaryCoords ?? [],
+        'customBackgroundImageUrl': widget.customBackgroundImageUrl,
       };
 
       return ThreeJsBridge(configJson: jsonEncode(configMap));

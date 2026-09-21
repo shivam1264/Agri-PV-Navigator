@@ -1,6 +1,9 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/app_button.dart';
@@ -31,6 +34,17 @@ class _AgriPvSystemDesignScreenState extends State<AgriPvSystemDesignScreen> {
   double _rowSpacingMeters = 6.0;
   double _panelCoveragePercent = 40.0;
   final Scene3dController _scene3dController = Scene3dController();
+  String? _customBackgroundImageUrl;
+
+  Future<void> _pickBackgroundImage() async {
+    final picker = ImagePicker();
+    final xFile = await picker.pickImage(source: ImageSource.gallery);
+    if (xFile != null) {
+      setState(() {
+        _customBackgroundImageUrl = xFile.path;
+      });
+    }
+  }
 
   @override
   void initState() {
@@ -363,6 +377,7 @@ class _AgriPvSystemDesignScreenState extends State<AgriPvSystemDesignScreen> {
                                 controller: _scene3dController,
                                 showSunGizmo: false,
                                 enableGestures: false,
+                                customBackgroundImageUrl: _customBackgroundImageUrl,
                               ),
                               Container(
                                 decoration: BoxDecoration(
@@ -378,7 +393,7 @@ class _AgriPvSystemDesignScreenState extends State<AgriPvSystemDesignScreen> {
                               ),
                               Positioned(
                                 top: 10,
-                                right: 10,
+                                left: 10,
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                   decoration: BoxDecoration(
@@ -429,6 +444,23 @@ class _AgriPvSystemDesignScreenState extends State<AgriPvSystemDesignScreen> {
                       ),
                     ),
                     const SizedBox(height: 14),
+                    
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: _pickBackgroundImage,
+                        icon: const Icon(Icons.add_photo_alternate_rounded),
+                        label: const Text('Upload Custom Field Background'),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                          foregroundColor: AppColors.primaryDark,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
 
                     // Visual Exploration Quick Links (3D/AR View & Shadow Simulation)
                     Row(

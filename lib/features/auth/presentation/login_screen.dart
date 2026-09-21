@@ -17,9 +17,9 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final TextEditingController _identifierController = TextEditingController(text: 'shivam@example.com');
-  final TextEditingController _nameController = TextEditingController(text: 'Shivam Patel');
-  final TextEditingController _passwordController = TextEditingController(text: 'Password123!');
+  final TextEditingController _identifierController = TextEditingController();
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
   bool _isSignUp = false;
   bool _obscurePassword = true;
 
@@ -47,7 +47,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (_isSignUp) {
       final name = _nameController.text.trim();
       success = await authProvider.register(
-        fullName: name.isNotEmpty ? name : 'User',
+        fullName: name.isNotEmpty ? name : 'Farmer',
         email: email,
         password: password,
       );

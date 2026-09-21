@@ -25,8 +25,9 @@ class UserProfile {
 
   /// Returns the first name only (e.g. "Shivam" from "Shivam Kumar")
   String get firstName {
-    if (name.trim().isEmpty) return 'User';
-    return name.trim().split(' ').first;
+    if (name.trim().isEmpty) return 'Farmer';
+    final first = name.trim().split(' ').first;
+    return first.toLowerCase() == 'user' ? 'Farmer' : first;
   }
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
@@ -34,11 +35,50 @@ class UserProfile {
         ? json['user'] as Map<String, dynamic>
         : json;
 
-    final rawName = (data['fullName'] ?? data['name'] ?? '${data['firstName'] ?? ''} ${data['lastName'] ?? ''}').toString().trim();
-    final name = rawName.isEmpty ? 'Farmer' : rawName;
-    final initials = (data['initials'] != null && data['initials'].toString().isNotEmpty)
+    final String fName = (data['firstName'] ?? '').toString().trim();
+    String lName = (data['lastName'] ?? '').toString().trim();
+    if (lName.toLowerCase() == 'user') {
+      lName = '';
+    }
+
+    String rawName = (data['fullName'] ?? data['name'] ?? '').toString().trim();
+    if (rawName.toLowerCase().endsWith(' user')) {
+      final withoutUser = rawName.substring(0, rawName.length - 5).trim();
+      if (withoutUser.isNotEmpty) {
+        rawName = withoutUser;
+      }
+    }
+
+    if (rawName.isEmpty) {
+      if (fName.isNotEmpty && lName.isNotEmpty) {
+        rawName = '$fName $lName';
+      } else if (fName.isNotEmpty) {
+        rawName = fName;
+      } else {
+        rawName = 'Farmer';
+      }
+    }
+
+    final name = rawName;
+    String initials = (data['initials'] != null && data['initials'].toString().isNotEmpty)
         ? data['initials'].toString()
-        : (name.length >= 2 ? name.substring(0, 2).toUpperCase() : 'SK');
+        : '';
+    if (initials.toUpperCase() == 'SU' && !name.toLowerCase().contains('user') && !name.toLowerCase().contains('upadhyay')) {
+      // If SU was auto-generated from 'Shivam User', fix it
+      initials = '';
+    }
+    if (initials.isEmpty) {
+      final parts = name.split(RegExp(r'\s+'));
+      if (parts.length >= 2 && parts[0].isNotEmpty && parts[1].isNotEmpty) {
+        initials = '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+      } else if (name.length >= 2) {
+        initials = name.substring(0, 2).toUpperCase();
+      } else if (name.isNotEmpty) {
+        initials = name[0].toUpperCase();
+      } else {
+        initials = 'SK';
+      }
+    }
 
     return UserProfile(
       id: (data['id'] ?? data['_id'] ?? '').toString(),

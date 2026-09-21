@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -10,12 +11,47 @@ import '../../models/agri_pv_design.dart';
 class ReportPdfService {
   ReportPdfService._();
 
-  static Future<String> generateProposalReport({
+  static String _clean(dynamic input, [String fallback = '']) {
+    if (input == null) return fallback;
+    final s = input.toString();
+    final res = s
+        .replaceAll('₹', 'Rs. ')
+        .replaceAll('²', '2')
+        .replaceAll('³', '3')
+        .replaceAll('°', ' deg')
+        .replaceAll('’', "'")
+        .replaceAll('‘', "'")
+        .replaceAll('“', '"')
+        .replaceAll('”', '"')
+        .replaceAll('–', '-')
+        .replaceAll('—', '-')
+        .replaceAll('•', '*')
+        .replaceAll(RegExp(r'[^\x00-\x7F]'), '')
+        .trim();
+    return res.isNotEmpty ? res : fallback;
+  }
+
+  static pw.Document buildProposalDocument({
     required Farm farm,
     required AgriPvDesign design,
-  }) async {
+  }) {
+    final cleanFarmName = _clean(farm.name, 'Agri-PV Farm');
+    final cleanLocation = _clean(farm.location, 'Farm Site');
+    final cleanState = _clean(farm.state, 'India');
+    final cleanCrop = _clean(farm.crop, 'Wheat');
+    final cleanSoil = _clean(farm.soilType, 'Loamy');
+    final cleanSlope = _clean(farm.slope, '< 2%');
+    final cleanIrrigation = _clean(farm.irrigation, 'Available');
+    final cleanLandUse = _clean(farm.currentLandUse, 'Cropland');
+    final cleanSuitability = _clean(farm.suitabilityLabel, 'Highly Suitable');
+
+    final cleanDesignName = _clean(design.name, '$cleanFarmName System');
+    final cleanMounting = _clean(design.mountingType.label, 'Elevated Stilt');
+    final cleanOrientation = _clean(design.orientation.label, 'South');
+    final cleanClearance = _clean(design.clearanceStatus, 'Tractor Clearance');
+
     final pdf = pw.Document(
-      title: 'Agri-PV Proposal — ${farm.name}',
+      title: 'Agri-PV Proposal - $cleanFarmName',
       author: 'Agri-PV Navigator',
     );
 
@@ -74,9 +110,9 @@ class ReportPdfService {
                 pw.SizedBox(height: 24),
                 pw.Row(
                   children: [
-                    _infoChip('Farm', farm.name),
+                    _infoChip('Farm', cleanFarmName),
                     pw.SizedBox(width: 12),
-                    _infoChip('Location', farm.location),
+                    _infoChip('Location', cleanLocation),
                   ],
                 ),
                 pw.SizedBox(height: 10),
@@ -84,7 +120,7 @@ class ReportPdfService {
                   children: [
                     _infoChip('Area', '${farm.areaAcres.toStringAsFixed(2)} acres'),
                     pw.SizedBox(width: 12),
-                    _infoChip('Crop', farm.crop),
+                    _infoChip('Crop', cleanCrop),
                   ],
                 ),
                 pw.Spacer(),
@@ -135,12 +171,12 @@ class ReportPdfService {
                     children: [
                       _sectionLabel('Farm Information'),
                       pw.SizedBox(height: 8),
-                      _tableRow('Farm Name', farm.name),
-                      _tableRow('Location', farm.location),
-                      _tableRow('State', farm.state),
+                      _tableRow('Farm Name', cleanFarmName),
+                      _tableRow('Location', cleanLocation),
+                      _tableRow('State', cleanState),
                       _tableRow('Total Area', '${farm.areaAcres.toStringAsFixed(2)} acres'),
-                      _tableRow('Primary Crop', farm.crop),
-                      _tableRow('Land Use', farm.currentLandUse),
+                      _tableRow('Primary Crop', cleanCrop),
+                      _tableRow('Land Use', cleanLandUse),
                     ],
                   ),
                 ),
@@ -151,12 +187,12 @@ class ReportPdfService {
                     children: [
                       _sectionLabel('Agronomic Data'),
                       pw.SizedBox(height: 8),
-                      _tableRow('Soil Type', farm.soilType),
-                      _tableRow('Land Slope', farm.slope),
-                      _tableRow('Irrigation', farm.irrigation),
+                      _tableRow('Soil Type', cleanSoil),
+                      _tableRow('Land Slope', cleanSlope),
+                      _tableRow('Irrigation', cleanIrrigation),
                       _tableRow('Grid Proximity', '${farm.gridProximityKm.toStringAsFixed(1)} km'),
                       _tableRow('Suitability Score', '${farm.suitabilityScore}/100'),
-                      _tableRow('Status', farm.suitabilityLabel),
+                      _tableRow('Status', cleanSuitability),
                     ],
                   ),
                 ),
@@ -195,10 +231,10 @@ class ReportPdfService {
                     children: [
                       _sectionLabel('Structural Configuration'),
                       pw.SizedBox(height: 8),
-                      _tableRow('Design Name', design.name),
-                      _tableRow('Mounting Type', design.mountingType.label),
-                      _tableRow('Panel Tilt', '${design.tiltDegrees.toInt()}°'),
-                      _tableRow('Orientation', design.orientation.label),
+                      _tableRow('Design Name', cleanDesignName),
+                      _tableRow('Mounting Type', cleanMounting),
+                      _tableRow('Panel Tilt', '${design.tiltDegrees.toInt()} deg'),
+                      _tableRow('Orientation', cleanOrientation),
                       _tableRow('Row Spacing', '${design.rowSpacingMeters.toStringAsFixed(1)} m'),
                       _tableRow('Panel Coverage', '${design.panelCoveragePercent.toStringAsFixed(0)}%'),
                       _tableRow('Panel Height', '${design.panelHeightMeters.toStringAsFixed(1)} m'),
@@ -217,10 +253,10 @@ class ReportPdfService {
                       _tableRow('Cultivable Area', '${design.cultivableAreaPercent.toStringAsFixed(1)}%'),
                       _tableRow('Crop Yield Impact', '${design.cropYieldPercent.toStringAsFixed(1)}%'),
                       _tableRow('Land Eq. Ratio', design.landEquivalentRatio.toStringAsFixed(2)),
-                      _tableRow('Ground DLI', '${design.dliMolM2Day.toStringAsFixed(1)} mol/m²/day'),
+                      _tableRow('Ground DLI', '${design.dliMolM2Day.toStringAsFixed(1)} mol/m2/day'),
                       _tableRow('Water Saved', '${(design.waterSavedLiters / 1000).toStringAsFixed(0)} kL/yr'),
-                      _tableRow('Machinery', design.clearanceStatus),
-                      _tableRow('CO₂ Saved', '${design.co2SavedTons.toStringAsFixed(0)} T/yr'),
+                      _tableRow('Machinery', cleanClearance),
+                      _tableRow('CO2 Saved', '${design.co2SavedTons.toStringAsFixed(0)} T/yr'),
                     ],
                   ),
                 ),
@@ -282,9 +318,9 @@ class ReportPdfService {
             // Summary cards row
             pw.Row(
               children: [
-                _financialCard('Project Cost', '₹${design.projectCostCr.toStringAsFixed(2)} Cr', '#0F4C2A'),
+                _financialCard('Project Cost', 'Rs. ${design.projectCostCr.toStringAsFixed(2)} Cr', '#0F4C2A'),
                 pw.SizedBox(width: 10),
-                _financialCard('Annual Revenue', '₹${(design.pvCapacityKw * 0.05).toStringAsFixed(1)} L/yr', '#166534'),
+                _financialCard('Annual Revenue', 'Rs. ${(design.pvCapacityKw * 0.05).toStringAsFixed(1)} L/yr', '#166534'),
                 pw.SizedBox(width: 10),
                 _financialCard('Payback Period', '${design.paybackYears.toStringAsFixed(1)} Years', '#15803D'),
               ],
@@ -292,11 +328,11 @@ class ReportPdfService {
             pw.SizedBox(height: 10),
             pw.Row(
               children: [
-                _financialCard('Net Present Value', '₹${design.npvLakhs.toStringAsFixed(1)} L', '#16A34A'),
+                _financialCard('Net Present Value', 'Rs. ${design.npvLakhs.toStringAsFixed(1)} L', '#16A34A'),
                 pw.SizedBox(width: 10),
                 _financialCard('Project IRR', '${design.irrPercent.toStringAsFixed(1)}%', '#22C55E'),
                 pw.SizedBox(width: 10),
-                _financialCard('LCOE', '₹${design.lcoePerKwh.toStringAsFixed(2)}/kWh', '#15803D'),
+                _financialCard('LCOE', 'Rs. ${design.lcoePerKwh.toStringAsFixed(2)}/kWh', '#15803D'),
               ],
             ),
             pw.SizedBox(height: 24),
@@ -306,11 +342,11 @@ class ReportPdfService {
             _tableRow('Elevated Steel Structures', '26%'),
             _tableRow('Inverters & Transformers', '14%'),
             _tableRow('Installation & Grid Interconnection', '15%'),
-            _tableRow('LCOE (Levelized Cost of Energy)', '₹${design.lcoePerKwh.toStringAsFixed(2)} / kWh'),
+            _tableRow('LCOE (Levelized Cost of Energy)', 'Rs. ${design.lcoePerKwh.toStringAsFixed(2)} / kWh'),
             pw.SizedBox(height: 20),
             _sectionLabel('Revenue Streams'),
             pw.SizedBox(height: 10),
-            _tableRow('Feed-in Energy Revenue (@ ₹3.15/kWh)', '76%'),
+            _tableRow('Feed-in Energy Revenue (@ Rs. 3.15/kWh)', '76%'),
             _tableRow('Crop Sale Harvest (Annual)', '24%'),
             pw.SizedBox(height: 24),
             pw.Container(
@@ -325,11 +361,11 @@ class ReportPdfService {
                   ),
                   pw.SizedBox(height: 6),
                   pw.Text(
-                    '• Specific yield: 1,580 kWh/kWp/year (with 2.5% microclimate cooling bonus)\n'
-                    '• Module degradation: 0.5% per year over 25-year project life\n'
-                    '• PPA/FiT tariff: ₹3.15/kWh (domestic off-take or DISCOM)\n'
-                    '• Discount rate: 8% for NPV computation\n'
-                    '• Grid emission factor: 0.82 kg CO₂/kWh (India CEA 2023-24)',
+                    '- Specific yield: 1,580 kWh/kWp/year (with 2.5% microclimate cooling bonus)\n'
+                    '- Module degradation: 0.5% per year over 25-year project life\n'
+                    '- PPA/FiT tariff: Rs. 3.15/kWh (domestic off-take or DISCOM)\n'
+                    '- Discount rate: 8% for NPV computation\n'
+                    '- Grid emission factor: 0.82 kg CO2/kWh (India CEA 2023-24)',
                     style: pw.TextStyle(fontSize: 8, color: PdfColors.grey700),
                   ),
                 ],
@@ -361,7 +397,7 @@ class ReportPdfService {
                 pw.SizedBox(width: 12),
                 _impactStat(
                   '${(design.co2SavedTons * 25).toStringAsFixed(0)} T',
-                  'CO₂ Emissions Avoided',
+                  'CO2 Emissions Avoided',
                 ),
                 pw.SizedBox(width: 12),
                 _impactStat(
@@ -373,16 +409,16 @@ class ReportPdfService {
             pw.SizedBox(height: 24),
             _sectionLabel('SDG Alignment'),
             pw.SizedBox(height: 10),
-            _tableRow('SDG 2 — Zero Hunger', 'Maintains ${design.cropYieldPercent.toStringAsFixed(0)}% crop yield'),
-            _tableRow('SDG 7 — Clean Energy', '${design.pvCapacityKw.toStringAsFixed(0)} kW clean solar capacity'),
-            _tableRow('SDG 13 — Climate Action', '${design.co2SavedTons.toStringAsFixed(0)} tons CO₂ offset annually'),
-            _tableRow('SDG 15 — Life on Land', 'Dual land use preserves agricultural biodiversity'),
+            _tableRow('SDG 2: Zero Hunger', 'Maintains ${design.cropYieldPercent.toStringAsFixed(0)}% crop yield'),
+            _tableRow('SDG 7: Clean Energy', '${design.pvCapacityKw.toStringAsFixed(0)} kW clean solar capacity'),
+            _tableRow('SDG 13: Climate Action', '${design.co2SavedTons.toStringAsFixed(0)} tons CO2 offset annually'),
+            _tableRow('SDG 15: Life on Land', 'Dual land use preserves agricultural biodiversity'),
             pw.SizedBox(height: 24),
             _sectionLabel('Recommendations'),
             pw.SizedBox(height: 10),
             pw.Text(
               '1. Elevated stilt mounting (${design.panelHeightMeters.toStringAsFixed(1)} m) recommended for tractor clearance.\n'
-              '2. South orientation at ${design.tiltDegrees.toInt()}° tilt maximizes annual solar irradiance.\n'
+              '2. South orientation at ${design.tiltDegrees.toInt()} deg tilt maximizes annual solar irradiance.\n'
               '3. Maintain ${design.rowSpacingMeters.toStringAsFixed(0)} m row spacing for optimal sunlight penetration.\n'
               '4. Schedule bi-monthly panel washing to maintain >95% energy yield.\n'
               '5. Apply for PM-KUSUM (Component C) subsidy to reduce CAPEX by 30-40%.',
@@ -402,8 +438,22 @@ class ReportPdfService {
       ),
     );
 
-    // ─── Save to documents directory ─────────────────────────────────────────
-    final bytes = await pdf.save();
+    return pdf;
+  }
+
+  static Future<Uint8List> buildProposalPdfBytes({
+    required Farm farm,
+    required AgriPvDesign design,
+  }) async {
+    final pdf = buildProposalDocument(farm: farm, design: design);
+    return await pdf.save();
+  }
+
+  static Future<String> generateProposalReport({
+    required Farm farm,
+    required AgriPvDesign design,
+  }) async {
+    final bytes = await buildProposalPdfBytes(farm: farm, design: design);
 
     if (kIsWeb) {
       await Printing.sharePdf(bytes: bytes, filename: 'AgriPV_Proposal_${farm.name.replaceAll(' ', '_')}.pdf');
@@ -456,13 +506,13 @@ class ReportPdfService {
         children: [
           pw.SizedBox(width: 160,
             child: pw.Text(
-              label,
+              _clean(label),
               style: pw.TextStyle(fontSize: 9, color: PdfColors.grey700),
             ),
           ),
           pw.Expanded(
             child: pw.Text(
-              value,
+              _clean(value),
               style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
             ),
           ),
@@ -481,8 +531,8 @@ class ReportPdfService {
       child: pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
-          pw.Text(label, style: pw.TextStyle(color: PdfColor.fromHex('#86EFAC'), fontSize: 7)),
-          pw.Text(value, style: pw.TextStyle(color: PdfColors.white, fontSize: 9, fontWeight: pw.FontWeight.bold)),
+          pw.Text(_clean(label), style: pw.TextStyle(color: PdfColor.fromHex('#86EFAC'), fontSize: 7)),
+          pw.Text(_clean(value), style: pw.TextStyle(color: PdfColors.white, fontSize: 9, fontWeight: pw.FontWeight.bold)),
         ],
       ),
     );
@@ -494,7 +544,7 @@ class ReportPdfService {
       child: pw.Row(
         children: [
           pw.SizedBox(width: 130,
-            child: pw.Text(label, style: pw.TextStyle(fontSize: 8)),
+            child: pw.Text(_clean(label), style: pw.TextStyle(fontSize: 8)),
           ),
           pw.Expanded(
             child: pw.Stack(
@@ -530,7 +580,7 @@ class ReportPdfService {
         child: pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
-            pw.Text(value,
+            pw.Text(_clean(value),
               style: pw.TextStyle(
                 color: PdfColors.white,
                 fontSize: 13,
@@ -538,7 +588,7 @@ class ReportPdfService {
               ),
             ),
             pw.SizedBox(height: 3),
-            pw.Text(label,
+            pw.Text(_clean(label),
               style: pw.TextStyle(
                 color: PdfColor.fromHex('#BBF7D0'),
                 fontSize: 7.5,
@@ -561,7 +611,7 @@ class ReportPdfService {
         child: pw.Column(
           children: [
             pw.Text(
-              value,
+              _clean(value),
               style: pw.TextStyle(
                 fontSize: 14,
                 fontWeight: pw.FontWeight.bold,
@@ -570,7 +620,7 @@ class ReportPdfService {
             ),
             pw.SizedBox(height: 4),
             pw.Text(
-              label,
+              _clean(label),
               style: pw.TextStyle(fontSize: 7.5, color: PdfColors.grey600),
               textAlign: pw.TextAlign.center,
             ),

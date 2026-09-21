@@ -6,6 +6,7 @@ const router = Router();
 
 // Public download endpoint for viewing/sharing PDF file
 router.get('/download/:fileName', ReportController.downloadReport);
+router.get('/:id/download', ReportController.downloadReportById);
 
 router.use(authenticate);
 

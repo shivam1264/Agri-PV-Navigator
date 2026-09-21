@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../models/farm.dart';
 import '../../../shared/widgets/farm_card.dart';
 import '../../../shared/widgets/bottom_nav_bar.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/farm_provider.dart';
+import '../../../providers/report_provider.dart';
 
 class MyFarmsScreen extends StatefulWidget {
   const MyFarmsScreen({super.key});
@@ -31,6 +33,53 @@ class _MyFarmsScreenState extends State<MyFarmsScreen> {
     super.dispose();
   }
 
+  Future<void> _confirmDeleteFarm(BuildContext context, Farm farm) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Farm?'),
+        content: Text('Are you sure you want to delete "${farm.name}"? This action will also delete all associated reports.'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFDC2626),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      await context.read<FarmProvider>().deleteFarm(farm.id);
+      if (context.mounted) {
+        context.read<ReportProvider>().deleteReport('rep_prop_${farm.id}');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+                const SizedBox(width: 8),
+                Expanded(child: Text('Farm "${farm.name}" deleted.')),
+              ],
+            ),
+            backgroundColor: const Color(0xFF1E293B),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -43,8 +92,15 @@ class _MyFarmsScreenState extends State<MyFarmsScreen> {
           farm.crop.toLowerCase().contains(_searchQuery.toLowerCase());
     }).toList();
 
-    return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) {
+          context.go('/home');
+        }
+      },
+      child: Scaffold(
+        backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -122,7 +178,10 @@ class _MyFarmsScreenState extends State<MyFarmsScreen> {
 
                   // Add New Farm Button
                   GestureDetector(
-                    onTap: () => context.go('/farm-location'),
+                    onTap: () {
+                      context.read<FarmProvider>().resetDraftFarm();
+                      context.go('/farm-location');
+                    },
                     child: Container(
                       width: double.infinity,
                       height: 44,
@@ -202,8 +261,9 @@ class _MyFarmsScreenState extends State<MyFarmsScreen> {
                           farm: farm,
                           onTap: () {
                             farmProv.selectFarm(farm);
-                            context.go('/farm-detail');
+                            context.push('/farm-detail');
                           },
+                          onDelete: () => _confirmDeleteFarm(context, farm),
                         );
                       },
                     ),
@@ -222,6 +282,7 @@ class _MyFarmsScreenState extends State<MyFarmsScreen> {
           ],
         ),
       ),
+    ),
     );
   }
 }

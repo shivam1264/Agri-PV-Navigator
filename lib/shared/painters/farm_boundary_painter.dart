@@ -76,7 +76,10 @@ class FarmBoundaryPainter extends CustomPainter {
     }
 
     // 2. Main Farm Polygon Coordinates
-    if (points.isEmpty) return;
+    if (points.isEmpty) {
+      canvas.restore();
+      return;
+    }
 
     final polygonPath = Path()..moveTo(points[0].dx, points[0].dy);
     for (int i = 1; i < points.length; i++) {

@@ -33,6 +33,7 @@ class _AgriPvSystemDesignScreenState extends State<AgriPvSystemDesignScreen> {
   double _panelCoveragePercent = 40.0;
   final Scene3dController _scene3dController = Scene3dController();
   String? _customBackgroundImageUrl;
+  String _selectedPresetId = 'design_balanced';
 
   Future<void> _pickBackgroundImage() async {
     final picker = ImagePicker();
@@ -176,20 +177,35 @@ class _AgriPvSystemDesignScreenState extends State<AgriPvSystemDesignScreen> {
                     const SizedBox(height: 6),
                     Row(
                       children: [
-                        _buildPresetChip('🌾 Agri-First', 'Max Crop', () {
-                          final p = presets.firstWhere((d) => d.id == 'design_agri_first', orElse: () => presets[0]);
-                          _applyPreset(p);
-                        }),
+                        _buildPresetChip(
+                          '🌾 Agri-First',
+                          'Max Crop',
+                          () {
+                            final p = presets.firstWhere((d) => d.id == 'design_agri_first', orElse: () => presets[0]);
+                            _applyPreset(p);
+                          },
+                          isHighlighted: _selectedPresetId == 'design_agri_first',
+                        ),
                         const SizedBox(width: 8),
-                        _buildPresetChip('⚖️ Best LER', 'Balanced', () {
-                          final p = presets.firstWhere((d) => d.id == 'design_balanced', orElse: () => presets[1]);
-                          _applyPreset(p);
-                        }, isHighlighted: true),
+                        _buildPresetChip(
+                          '⚖️ Best LER',
+                          'Balanced',
+                          () {
+                            final p = presets.firstWhere((d) => d.id == 'design_balanced', orElse: () => presets[1]);
+                            _applyPreset(p);
+                          },
+                          isHighlighted: _selectedPresetId == 'design_balanced',
+                        ),
                         const SizedBox(width: 8),
-                        _buildPresetChip('⚡ Power-First', 'Max Energy', () {
-                          final p = presets.firstWhere((d) => d.id == 'design_power_first', orElse: () => presets[2]);
-                          _applyPreset(p);
-                        }),
+                        _buildPresetChip(
+                          '⚡ Power-First',
+                          'Max Energy',
+                          () {
+                            final p = presets.firstWhere((d) => d.id == 'design_power_first', orElse: () => presets[2]);
+                            _applyPreset(p);
+                          },
+                          isHighlighted: _selectedPresetId == 'design_power_first',
+                        ),
                       ],
                     ),
                     const SizedBox(height: 16),
@@ -206,6 +222,7 @@ class _AgriPvSystemDesignScreenState extends State<AgriPvSystemDesignScreen> {
                         return Expanded(
                           child: GestureDetector(
                             onTap: () => setState(() {
+                              _selectedPresetId = 'custom';
                               _mountingType = type;
                               _sync3dConfig();
                             }),
@@ -288,6 +305,7 @@ class _AgriPvSystemDesignScreenState extends State<AgriPvSystemDesignScreen> {
                             min: 10,
                             max: 40,
                             onChanged: (val) => setState(() {
+                              _selectedPresetId = 'custom';
                               _tiltDegrees = val;
                               _sync3dConfig();
                             }),
@@ -302,6 +320,7 @@ class _AgriPvSystemDesignScreenState extends State<AgriPvSystemDesignScreen> {
                             min: 4.0,
                             max: 12.0,
                             onChanged: (val) => setState(() {
+                              _selectedPresetId = 'custom';
                               _rowSpacingMeters = val;
                               _sync3dConfig();
                             }),
@@ -315,7 +334,10 @@ class _AgriPvSystemDesignScreenState extends State<AgriPvSystemDesignScreen> {
                             value: _panelCoveragePercent,
                             min: 20,
                             max: 70,
-                            onChanged: (val) => setState(() => _panelCoveragePercent = val),
+                            onChanged: (val) => setState(() {
+                              _selectedPresetId = 'custom';
+                              _panelCoveragePercent = val;
+                            }),
                           ),
                           const Divider(height: 22, color: AppColors.borderLight),
 
@@ -557,6 +579,7 @@ class _AgriPvSystemDesignScreenState extends State<AgriPvSystemDesignScreen> {
 
   void _applyPreset(AgriPvDesign preset) {
     setState(() {
+      _selectedPresetId = preset.id;
       _mountingType = preset.mountingType;
       _tiltDegrees = preset.tiltDegrees;
       _orientation = preset.orientation;

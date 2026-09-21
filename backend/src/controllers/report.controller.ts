@@ -75,6 +75,31 @@ export class ReportController {
     }
   }
 
+  public static async downloadReportById(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const reportId = req.params.id;
+      const { Report } = await import('../models/report.model');
+      const report = await Report.findById(reportId);
+
+      if (!report || !report.filePath || !fs.existsSync(report.filePath)) {
+        res.status(404).json({
+          success: false,
+          message: 'Report file not found.',
+          code: 'FILE_NOT_FOUND',
+        });
+        return;
+      }
+
+      const fileName = path.basename(report.filePath);
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+      const fileStream = fs.createReadStream(report.filePath);
+      fileStream.pipe(res);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   public static async deleteReport(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       await ReportService.deleteReport(req.user!._id.toString(), req.params.id);

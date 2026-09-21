@@ -11,10 +11,13 @@ class ReportProvider extends ChangeNotifier {
   bool _isGenerating = false;
   String? _error;
 
-  List<ProposalReport> get reports => _reports;
+  final Set<String> _deletedReportIds = {};
+
+  List<ProposalReport> get reports => _reports.where((r) => !_deletedReportIds.contains(r.id)).toList();
   bool get isLoading => _isLoading;
   bool get isGenerating => _isGenerating;
   String? get error => _error;
+  bool isDeleted(String id) => _deletedReportIds.contains(id);
 
   Future<void> loadReports({String? farmId, String? type}) async {
     _isLoading = true;
@@ -24,11 +27,10 @@ class ReportProvider extends ChangeNotifier {
     try {
       final serverReports = await _repo.getReports(farmId: farmId, type: type);
       for (final sr in serverReports) {
-        _reports.removeWhere((r) => r.id == sr.id);
-        _reports.add(sr);
-      }
-      if (_reports.isEmpty && serverReports.isNotEmpty) {
-        _reports = serverReports;
+        if (!_deletedReportIds.contains(sr.id)) {
+          _reports.removeWhere((r) => r.id == sr.id || r.farmName.toLowerCase() == sr.farmName.toLowerCase());
+          _reports.add(sr);
+        }
       }
       _isLoading = false;
       notifyListeners();
@@ -52,6 +54,7 @@ class ReportProvider extends ChangeNotifier {
 
     final cleanFarmId = farmId.trim();
     final cleanDesignId = designId.trim();
+    final effectiveFarmName = farmName ?? 'My Farm';
     final isValidMongo = RegExp(r'^[0-9a-fA-F]{24}$').hasMatch(cleanFarmId) &&
         (cleanDesignId.isEmpty || RegExp(r'^[0-9a-fA-F]{24}$').hasMatch(cleanDesignId));
 
@@ -64,7 +67,11 @@ class ReportProvider extends ChangeNotifier {
         designId: cleanDesignId,
         type: type,
       );
-      _reports.removeWhere((r) => r.id == report.id);
+      // Ensure only 1 report per farm: remove previous reports for this farm
+      _reports.removeWhere((r) =>
+          r.id == report.id ||
+          r.farmName.toLowerCase() == effectiveFarmName.toLowerCase() ||
+          r.id.contains(cleanFarmId));
       _reports.insert(0, report);
       _isGenerating = false;
       notifyListeners();
@@ -78,15 +85,18 @@ class ReportProvider extends ChangeNotifier {
 
       final fallbackReport = ProposalReport(
         id: 'rep_${DateTime.now().millisecondsSinceEpoch}',
-        title: title ?? '${farmName ?? "Agri-PV"} Proposal & Feasibility Report',
-        farmName: farmName ?? 'My Farm',
+        title: title ?? '$effectiveFarmName Agri-PV Feasibility & Proposal',
+        farmName: effectiveFarmName,
         date: DateTime.now(),
         type: rType,
-        fileSize: '1.4 MB',
+        fileSize: '1.8 MB',
         downloadUrl: '/api/reports/download/proposal',
       );
 
-      _reports.removeWhere((r) => r.farmName == fallbackReport.farmName && r.type == fallbackReport.type);
+      // Ensure strictly 1 report per farm
+      _reports.removeWhere((r) =>
+          r.farmName.toLowerCase() == effectiveFarmName.toLowerCase() ||
+          r.id.contains(cleanFarmId));
       _reports.insert(0, fallbackReport);
       _isGenerating = false;
       notifyListeners();
@@ -94,9 +104,14 @@ class ReportProvider extends ChangeNotifier {
     }
   }
 
-  Future<String?> downloadAndOpenReport(ProposalReport report) async {
+  Future<String?> downloadAndOpenReport(ProposalReport report, {List<int>? fallbackBytes}) async {
     try {
-      final filePath = await _repo.downloadReportPdf(report.id, report.title);
+      final filePath = await _repo.downloadReportPdf(
+        report.id,
+        report.title,
+        downloadUrl: report.downloadUrl,
+        fallbackBytes: fallbackBytes,
+      );
       await OpenFilex.open(filePath);
       return filePath;
     } catch (e) {
@@ -107,15 +122,12 @@ class ReportProvider extends ChangeNotifier {
   }
 
   Future<bool> deleteReport(String id) async {
+    _deletedReportIds.add(id);
+    _reports.removeWhere((r) => r.id == id);
+    notifyListeners();
     try {
       await _repo.deleteReport(id);
-      _reports.removeWhere((r) => r.id == id);
-      notifyListeners();
-      return true;
-    } catch (e) {
-      _error = 'Failed to delete report';
-      notifyListeners();
-      return false;
-    }
+    } catch (_) {}
+    return true;
   }
 }

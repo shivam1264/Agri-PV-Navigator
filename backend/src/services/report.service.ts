@@ -50,25 +50,42 @@ export class ReportService {
       outputPath,
     });
 
-    let title = 'Agri-PV Comprehensive Proposal';
-    if (reportType === 'technical') title = 'Technical & Structural Specifications';
-    else if (reportType === 'financial') title = '25-Year Techno-Economic Analysis';
-    else if (reportType === 'environmental') title = 'Environmental & Crop Yield Impact';
+    let title = `${farm.name} Agri-PV Comprehensive Feasibility & Proposal`;
+    if (reportType === 'technical') title = `${farm.name} Technical & Structural Specifications`;
+    else if (reportType === 'financial') title = `${farm.name} 25-Year Techno-Economic Analysis`;
+    else if (reportType === 'environmental') title = `${farm.name} Environmental & Crop Yield Impact`;
 
-    const report = new Report({
+    // Only 1 report per farm: check if existing report exists for this farm
+    let report = await Report.findOne({
       userId: new mongoose.Types.ObjectId(userId),
       farmId: farm._id,
-      designId: design?._id,
-      title,
-      farmName: farm.name,
-      reportType,
-      fileSize: fileSizeStr,
-      fileUrl: `/api/reports/download/${fileName}`,
-      filePath,
-      status: 'completed',
     });
 
-    await report.save();
+    if (report) {
+      report.designId = design?._id;
+      report.title = title;
+      report.farmName = farm.name;
+      report.reportType = reportType;
+      report.fileSize = fileSizeStr;
+      report.fileUrl = `/api/reports/download/${fileName}`;
+      report.filePath = filePath;
+      report.status = 'completed';
+      await report.save();
+    } else {
+      report = new Report({
+        userId: new mongoose.Types.ObjectId(userId),
+        farmId: farm._id,
+        designId: design?._id,
+        title,
+        farmName: farm.name,
+        reportType,
+        fileSize: fileSizeStr,
+        fileUrl: `/api/reports/download/${fileName}`,
+        filePath,
+        status: 'completed',
+      });
+      await report.save();
+    }
 
     // Trigger user notification
     const notification = new Notification({

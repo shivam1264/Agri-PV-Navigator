@@ -93,9 +93,20 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
+    return PopScope(
+      canPop: true,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) {
+          if (context.canPop()) {
+            context.pop();
+          } else {
+            context.go('/profile');
+          }
+        }
+      },
+      child: Scaffold(
+        backgroundColor: theme.scaffoldBackgroundColor,
+        appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         title: Text(
@@ -107,7 +118,13 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
         ),
         leading: IconButton(
           icon: Icon(Icons.arrow_back_rounded, color: isDark ? Colors.white : null),
-          onPressed: () => context.go('/profile'),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/profile');
+            }
+          },
         ),
       ),
       body: SafeArea(
@@ -243,6 +260,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
           ],
         ),
       ),
+    ),
     );
   }
 

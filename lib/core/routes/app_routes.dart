@@ -69,6 +69,14 @@ final GoRouter appRouter = GoRouter(
       pageBuilder: (context, state) => _buildFadePage(context, state, const FarmDetailScreen()),
     ),
     GoRoute(
+      path: '/farm-analysis',
+      pageBuilder: (context, state) => _buildFadePage(context, state, const SiteSuitabilityScreen(readOnly: true)),
+    ),
+    GoRoute(
+      path: '/farm-design',
+      pageBuilder: (context, state) => _buildFadePage(context, state, const AgriPvSystemDesignScreen(readOnly: true)),
+    ),
+    GoRoute(
       path: '/farm-location',
       pageBuilder: (context, state) => _buildFadePage(context, state, const FarmLocationScreen()),
     ),

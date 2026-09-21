@@ -17,7 +17,9 @@ import '../../../models/farm.dart';
 import '../../../services/calculation/agri_pv_calculation_service.dart';
 
 class SiteSuitabilityScreen extends StatefulWidget {
-  const SiteSuitabilityScreen({super.key});
+  final bool readOnly;
+
+  const SiteSuitabilityScreen({super.key, this.readOnly = false});
 
   @override
   State<SiteSuitabilityScreen> createState() => _SiteSuitabilityScreenState();
@@ -51,7 +53,7 @@ class _SiteSuitabilityScreenState extends State<SiteSuitabilityScreen> {
         elevation: 0,
         leading: IconButton(
           icon: Icon(Icons.arrow_back_rounded, color: isDark ? Colors.white : const Color(0xFF0F172A)),
-          onPressed: () => context.go('/farm-details'),
+          onPressed: () => context.go(widget.readOnly ? '/farm-detail' : '/farm-details'),
         ),
         title: Text(
           'Site Suitability',
@@ -75,20 +77,22 @@ class _SiteSuitabilityScreenState extends State<SiteSuitabilityScreen> {
                 ),
               ),
             ),
-          IconButton(
-            icon: Icon(Icons.refresh_rounded, color: isDark ? Colors.white : const Color(0xFF0F172A)),
-            tooltip: 'Recalculate from server',
-            onPressed: () => context
-                .read<SuitabilityProvider>()
-                .recalculateSuitability(farm.id, fallbackFarm: farm),
-          ),
+          if (!widget.readOnly)
+            IconButton(
+              icon: Icon(Icons.refresh_rounded, color: isDark ? Colors.white : const Color(0xFF0F172A)),
+              tooltip: 'Recalculate from server',
+              onPressed: () => context
+                  .read<SuitabilityProvider>()
+                  .recalculateSuitability(farm.id, fallbackFarm: farm),
+            ),
         ],
       ),
       body: SafeArea(
         child: Column(
           children: [
             // Progress Stepper (Step 3: Suitability)
-            ProgressStepper(
+            if (!widget.readOnly)
+              ProgressStepper(
               currentStep: 3,
               onStepTapped: (step) {
                 if (step == 1) context.go('/farm-location');
@@ -154,7 +158,7 @@ class _SiteSuitabilityScreenState extends State<SiteSuitabilityScreen> {
                               top: 10,
                               left: 10,
                               child: GestureDetector(
-                                onTap: () => context.go('/farm-location'),
+                                onTap: widget.readOnly ? null : () => context.go('/farm-location'),
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                   decoration: BoxDecoration(
@@ -174,31 +178,32 @@ class _SiteSuitabilityScreenState extends State<SiteSuitabilityScreen> {
                                 ),
                               ),
                             ),
-                            Positioned(
-                              top: 10,
-                              right: 10,
-                              child: GestureDetector(
-                                onTap: () => context.go('/farm-location'),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                  decoration: BoxDecoration(
-                                    color: Colors.black.withValues(alpha: 0.65),
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: const Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(Icons.edit_location_alt_rounded, color: Colors.white, size: 12),
-                                      SizedBox(width: 4),
-                                      Text(
-                                        'Edit boundary',
-                                        style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600),
-                                      ),
-                                    ],
+                            if (!widget.readOnly)
+                              Positioned(
+                                top: 10,
+                                right: 10,
+                                child: GestureDetector(
+                                  onTap: () => context.go('/farm-location'),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withValues(alpha: 0.65),
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: const Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.edit_location_alt_rounded, color: Colors.white, size: 12),
+                                        SizedBox(width: 4),
+                                        Text(
+                                          'Edit boundary',
+                                          style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
                           ],
                         ),
                       ),
@@ -352,30 +357,31 @@ class _SiteSuitabilityScreenState extends State<SiteSuitabilityScreen> {
             ),
 
             // Navigation Buttons (< Previous, Next →)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: AppButton(
-                      text: '‹ Previous',
-                      variant: AppButtonVariant.outline,
-                      onPressed: () => context.go('/farm-details'),
-                      height: 46,
+            if (!widget.readOnly)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: AppButton(
+                        text: '‹ Previous',
+                        variant: AppButtonVariant.outline,
+                        onPressed: () => context.go('/farm-details'),
+                        height: 46,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: AppButton(
-                      text: 'Next ›',
-                      variant: AppButtonVariant.primary,
-                      onPressed: () => context.go('/agri-pv-design'),
-                      height: 46,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: AppButton(
+                        text: 'Next ›',
+                        variant: AppButtonVariant.primary,
+                        onPressed: () => context.go('/agri-pv-design'),
+                        height: 46,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
           ],
         ),
       ),

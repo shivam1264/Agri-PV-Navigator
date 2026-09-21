@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/bottom_nav_bar.dart';
 import 'package:provider/provider.dart';
-import '../../../shared/painters/farm_boundary_painter.dart';
 import '../../../providers/farm_provider.dart';
 import '../../../providers/report_provider.dart';
+import '../../../models/farm.dart';
 
 class FarmDetailScreen extends StatelessWidget {
   const FarmDetailScreen({super.key});
@@ -124,7 +126,7 @@ class FarmDetailScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Satellite Farm Polygon Box
+                    // Live Parcel Map Banner
                     Container(
                       height: 180,
                       width: double.infinity,
@@ -144,11 +146,60 @@ class FarmDetailScreen extends StatelessWidget {
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(17),
-                        child: CustomPaint(
-                          painter: FarmBoundaryPainter(
-                            areaAcres: farm.areaAcres,
-                            showPins: true,
-                          ),
+                        child: Stack(
+                          children: [
+                            Positioned.fill(
+                              child: FlutterMap(
+                                options: MapOptions(
+                                  initialCenter: _farmCenter(farm),
+                                  initialZoom: 16.0,
+                                  maxZoom: 19.0,
+                                  minZoom: 4.0,
+                                ),
+                                children: [
+                                  TileLayer(
+                                    urlTemplate: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+                                    maxZoom: 19,
+                                  ),
+                                  if (_farmPolygon(farm.boundary).length >= 3)
+                                    PolygonLayer(
+                                      polygons: [
+                                        Polygon(
+                                          points: _farmPolygon(farm.boundary),
+                                          holePointsList: const [],
+                                          color: const Color(0xFF22C55E).withValues(alpha: 0.30),
+                                          borderColor: const Color(0xFF15803D),
+                                          borderStrokeWidth: 2.5,
+                                        ),
+                                      ],
+                                    ),
+                                ],
+                              ),
+                            ),
+                            Positioned(
+                              top: 10,
+                              left: 10,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.65),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.map_rounded, color: Colors.white, size: 13),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      farm.boundary.length >= 3
+                                          ? '${farm.boundary.length} mapped corners'
+                                          : 'Parcel view',
+                                      style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -217,7 +268,7 @@ class FarmDetailScreen extends StatelessWidget {
                             text: 'View Analysis',
                             variant: AppButtonVariant.outline,
                             icon: Icons.analytics_outlined,
-                            onPressed: () => context.go('/site-suitability'),
+                            onPressed: () => context.go('/farm-analysis'),
                             height: 44,
                           ),
                         ),
@@ -227,7 +278,7 @@ class FarmDetailScreen extends StatelessWidget {
                             text: 'View Design',
                             variant: AppButtonVariant.primary,
                             icon: Icons.solar_power_rounded,
-                            onPressed: () => context.go('/agri-pv-design'),
+                            onPressed: () => context.go('/farm-design'),
                             height: 44,
                           ),
                         ),
@@ -302,5 +353,28 @@ class FarmDetailScreen extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  LatLng _farmCenter(Farm farm) {
+    final poly = _farmPolygon(farm.boundary);
+    if (poly.isNotEmpty) {
+      var lat = 0.0, lng = 0.0;
+      for (final p in poly) {
+        lat += p.latitude;
+        lng += p.longitude;
+      }
+      return LatLng(lat / poly.length, lng / poly.length);
+    }
+    if (farm.latitude != null && farm.longitude != null) {
+      return LatLng(farm.latitude!, farm.longitude!);
+    }
+    return const LatLng(25.4358, 81.8463);
+  }
+
+  List<LatLng> _farmPolygon(List<List<double>> boundary) {
+    return [
+      for (final p in boundary)
+        if (p.length >= 2) LatLng(p[0], p[1]),
+    ];
   }
 }

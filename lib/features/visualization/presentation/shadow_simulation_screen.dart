@@ -233,9 +233,9 @@ class _ShadowSimulationScreenState extends State<ShadowSimulationScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: AppButton(
-                      text: 'View Proposal ›',
+                      text: 'View Financials ›',
                       variant: AppButtonVariant.primary,
-                      onPressed: () => context.go('/proposal-report'),
+                      onPressed: () => context.go('/techno-economic'),
                       height: 44,
                     ),
                   ),

@@ -9,11 +9,9 @@ import '../../features/farms/presentation/farm_detail_screen.dart';
 import '../../features/farm_location/presentation/farm_location_screen.dart';
 import '../../features/farm_details/presentation/farm_details_screen.dart';
 import '../../features/suitability/presentation/site_suitability_screen.dart';
-import '../../features/suitability/presentation/suitability_details_screen.dart';
 import '../../features/design/presentation/agri_pv_system_design_screen.dart';
 import '../../features/visualization/presentation/ar_3d_view_screen.dart';
 import '../../features/visualization/presentation/shadow_simulation_screen.dart';
-import '../../features/comparison/presentation/compare_designs_screen.dart';
 import '../../features/economics/presentation/techno_economic_screen.dart';
 import '../../features/proposal/presentation/proposal_report_screen.dart';
 import '../../features/reports/presentation/reports_screen.dart';
@@ -81,10 +79,6 @@ final GoRouter appRouter = GoRouter(
       pageBuilder: (context, state) => _buildFadePage(context, state, const SiteSuitabilityScreen()),
     ),
     GoRoute(
-      path: '/suitability-details',
-      pageBuilder: (context, state) => _buildFadePage(context, state, const SuitabilityDetailsScreen()),
-    ),
-    GoRoute(
       path: '/agri-pv-design',
       pageBuilder: (context, state) => _buildFadePage(context, state, const AgriPvSystemDesignScreen()),
     ),
@@ -95,10 +89,6 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/shadow-simulation',
       pageBuilder: (context, state) => _buildFadePage(context, state, const ShadowSimulationScreen()),
-    ),
-    GoRoute(
-      path: '/compare-designs',
-      pageBuilder: (context, state) => _buildFadePage(context, state, const CompareDesignsScreen()),
     ),
     GoRoute(
       path: '/techno-economic',

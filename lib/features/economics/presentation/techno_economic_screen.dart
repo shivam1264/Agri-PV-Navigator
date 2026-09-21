@@ -54,7 +54,7 @@ class _TechnoEconomicScreenState extends State<TechnoEconomicScreen> {
         ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
-          onPressed: () => context.go('/compare-designs'),
+          onPressed: () => context.go('/shadow-simulation'),
         ),
       ),
       body: SafeArea(
@@ -244,7 +244,7 @@ class _TechnoEconomicScreenState extends State<TechnoEconomicScreen> {
                     child: AppButton(
                       text: '‹ Previous',
                       variant: AppButtonVariant.outline,
-                      onPressed: () => context.go('/compare-designs'),
+                      onPressed: () => context.go('/shadow-simulation'),
                       height: 46,
                     ),
                   ),

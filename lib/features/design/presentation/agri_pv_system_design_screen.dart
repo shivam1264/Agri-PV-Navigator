@@ -141,15 +141,6 @@ class _AgriPvSystemDesignScreenState extends State<AgriPvSystemDesignScreen> {
                             ),
                           ],
                         ),
-                        TextButton(
-                          onPressed: () => context.go('/compare-designs'),
-                          style: TextButton.styleFrom(
-                            padding: EdgeInsets.zero,
-                            minimumSize: const Size(50, 24),
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
-                          child: const Text('Compare All ›', style: TextStyle(fontSize: 11)),
-                        ),
                       ],
                     ),
                     const SizedBox(height: 6),
@@ -458,14 +449,6 @@ class _AgriPvSystemDesignScreenState extends State<AgriPvSystemDesignScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 10),
-                    Center(
-                      child: TextButton.icon(
-                        onPressed: () => context.go('/compare-designs'),
-                        icon: const Icon(Icons.compare_arrows_rounded, size: 18),
-                        label: const Text('Compare with other designs'),
-                      ),
-                    ),
                     const SizedBox(height: 16),
                   ],
                 ),
@@ -481,7 +464,7 @@ class _AgriPvSystemDesignScreenState extends State<AgriPvSystemDesignScreen> {
                     child: AppButton(
                       text: '‹ Previous',
                       variant: AppButtonVariant.outline,
-                      onPressed: () => context.go('/suitability-details'),
+                      onPressed: () => context.go('/site-suitability'),
                       height: 46,
                     ),
                   ),

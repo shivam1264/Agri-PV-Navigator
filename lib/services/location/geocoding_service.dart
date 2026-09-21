@@ -87,6 +87,26 @@ class GeocodingService {
     }
   }
 
+  /// Network-based position (city-level). Used on web/desktop where there is
+  /// no GPS: the browser/OS Wi-Fi fix can be stale, so anchor to the current
+  /// network instead.
+  static Future<({double latitude, double longitude})?> getIpPosition() async {
+    try {
+      final res = await http
+          .get(Uri.parse('https://ipapi.co/json/'))
+          .timeout(const Duration(seconds: 8));
+      if (res.statusCode != 200) return null;
+      final map = jsonDecode(res.body) as Map<String, dynamic>;
+      final latitude = double.tryParse(map['latitude']?.toString() ?? '');
+      final longitude = double.tryParse(map['longitude']?.toString() ?? '');
+      if (latitude == null || longitude == null) return null;
+      return (latitude: latitude, longitude: longitude);
+    } catch (e) {
+      debugPrint('Error getting IP position: $e');
+      return null;
+    }
+  }
+
   /// Searches OpenStreetMap Nominatim for a query string
   static Future<List<LocationSearchResult>> searchLocations(String query) async {
     final trimmed = query.trim();

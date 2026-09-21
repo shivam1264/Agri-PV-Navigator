@@ -44,6 +44,9 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
+# Graphify
+graphify-out/
+
 # Node / Backend
 node_modules/
 backend/node_modules/

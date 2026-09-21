@@ -238,16 +238,40 @@ class _SiteSuitabilityScreenState extends State<SiteSuitabilityScreen> {
 
                     ...assessment.factors.map((factor) => FactorCard(
                       factor: factor,
-                      onTap: () => context.go('/suitability-details'),
                     )),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
 
-                    // "View Detailed Analysis" Outline Button
-                    AppButton(
-                      text: 'View Detailed Analysis',
-                      variant: AppButtonVariant.outline,
-                      onPressed: () => context.go('/suitability-details'),
-                      height: 44,
+                    // Agronomic Recommendations
+                    Text(
+                      'Agronomic Recommendations',
+                      style: AppTypography.sectionHeading.copyWith(fontSize: 16),
+                    ),
+                    const SizedBox(height: 10),
+
+                    AppCard(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: assessment.recommendations.map((rec) => Padding(
+                          padding: const EdgeInsets.only(bottom: 8.0),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Icon(Icons.lightbulb_outline_rounded, color: AppColors.solar, size: 18),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  rec,
+                                  style: AppTypography.bodySmall.copyWith(
+                                    color: AppColors.textPrimary,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        )).toList(),
+                      ),
                     ),
                     const SizedBox(height: 16),
                   ],
@@ -273,7 +297,7 @@ class _SiteSuitabilityScreenState extends State<SiteSuitabilityScreen> {
                     child: AppButton(
                       text: 'Next ›',
                       variant: AppButtonVariant.primary,
-                      onPressed: () => context.go('/suitability-details'),
+                      onPressed: () => context.go('/agri-pv-design'),
                       height: 46,
                     ),
                   ),

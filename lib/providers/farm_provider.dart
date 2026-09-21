@@ -12,10 +12,10 @@ class FarmProvider extends ChangeNotifier {
 
   // Draft farm state for multi-step creation
   final Map<String, dynamic> _draftFarm = {
-    'latitude': 23.2599,
-    'longitude': 77.4126,
-    'state': 'Madhya Pradesh',
-    'district': 'Bhopal',
+    'latitude': 22.9734,
+    'longitude': 78.6561,
+    'state': 'India',
+    'district': '',
     'areaAcres': 5.0,
     'name': '',
     'cropType': 'Wheat',

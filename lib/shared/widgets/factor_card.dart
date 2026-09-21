@@ -5,14 +5,10 @@ import '../../models/suitability_factor.dart';
 
 class FactorCard extends StatelessWidget {
   final SuitabilityFactor factor;
-  final bool showDetails;
-  final VoidCallback? onTap;
 
   const FactorCard({
     super.key,
     required this.factor,
-    this.showDetails = false,
-    this.onTap,
   });
 
   @override
@@ -24,12 +20,7 @@ class FactorCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.border, width: 1.0),
       ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(14),
-          child: Padding(
+      child: Padding(
             padding: const EdgeInsets.all(14.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -133,47 +124,9 @@ class FactorCard extends StatelessWidget {
                     minHeight: 5,
                   ),
                 ),
-                // Detailed data if expanded
-                if (showDetails) ...[
-                  const SizedBox(height: 12),
-                  const Divider(color: AppColors.borderLight, height: 1),
-                  const SizedBox(height: 10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Measured Value:',
-                        style: AppTypography.label.copyWith(fontSize: 12),
-                      ),
-                      Text(
-                        factor.metricValue,
-                        style: AppTypography.cardTitle.copyWith(fontSize: 13),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    factor.fullAssessment,
-                    style: AppTypography.bodySmall.copyWith(
-                      color: AppColors.textPrimary,
-                      fontSize: 12,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    factor.impact,
-                    style: AppTypography.labelSmall.copyWith(
-                      fontSize: 11,
-                      color: AppColors.primaryLight,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
               ],
             ),
           ),
-        ),
-      ),
     );
   }
 }

@@ -192,7 +192,6 @@ For privacy concerns, email: privacy@agri-pv-navigator.example.com''',
 • Flutter SDK (BSD 3-Clause)
 • go_router (BSD 3-Clause)
 • provider (MIT)
-• fl_chart (MIT)
 • flutter_map (BSD 2-Clause)
 • geolocator (MIT)
 • shared_preferences (BSD 3-Clause)

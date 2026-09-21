@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -32,7 +34,10 @@ class _FarmLocationScreenState extends State<FarmLocationScreen> {
 
   bool _isLocating = false;
   bool _isSearching = false;
-  bool _useSatellite = true;
+  bool _locationBlocked = false;
+
+  LatLng? _gpsPosition;
+  double? _gpsAccuracyM;
 
   List<LocationSearchResult> _searchResults = [];
   List<LatLng> _boundaryPoints = [];
@@ -41,21 +46,33 @@ class _FarmLocationScreenState extends State<FarmLocationScreen> {
   void initState() {
     super.initState();
     final draft = context.read<FarmProvider>().draftFarm;
+    final hasSavedLocation = draft['district'] != null && (draft['district'] as String).trim().isNotEmpty;
+
     if (draft['latitude'] != null && draft['longitude'] != null) {
       _latitude = (draft['latitude'] as num).toDouble();
       _longitude = (draft['longitude'] as num).toDouble();
-      if (draft['district'] != null) {
-        _locationName = draft['district'].toString();
-      }
-      if (draft['state'] != null) {
-        _stateName = '${draft['state']}, India';
-      }
+    }
+    if (hasSavedLocation) {
+      _locationName = draft['district'].toString();
+      final state = draft['state']?.toString() ?? 'India';
+      _stateName = state.contains('India') ? state : '$state, India';
       if (draft['areaAcres'] != null) {
         _areaAcres = (draft['areaAcres'] as num).toDouble();
       }
+    } else {
+      _locationName = '';
+      _stateName = 'India';
     }
     _searchController.text = _locationName;
     _generateBoundaryPoints();
+
+    // Automatically fetch the user's precise location on open, unless a
+    // location was already chosen in an earlier session step.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && !hasSavedLocation) {
+        _locateUser(showSnackbar: false);
+      }
+    });
   }
 
   void _generateBoundaryPoints() {
@@ -78,34 +95,79 @@ class _FarmLocationScreenState extends State<FarmLocationScreen> {
     super.dispose();
   }
 
-  Future<void> _useCurrentLocation() async {
+  /// Desktop web has no GPS: use the current network's IP location;
+  /// fall back to the browser's (stale Wi-Fi) fix if IP lookup fails.
+  Future<Position?> _desktopWebPosition() async {
+    final ipPos = await GeocodingService.getIpPosition();
+    if (ipPos != null) {
+      return Position(
+        latitude: ipPos.latitude,
+        longitude: ipPos.longitude,
+        timestamp: DateTime.now(),
+        accuracy: 5000,
+        altitude: 0,
+        heading: 0,
+        speed: 0,
+        speedAccuracy: 0,
+        headingAccuracy: 0,
+        altitudeAccuracy: 0,
+      );
+    }
+    return GeocodingService.getCurrentGpsPosition();
+  }
+
+  Future<void> _locateUser({bool showSnackbar = true}) async {
     setState(() => _isLocating = true);
 
-    final pos = await GeocodingService.getCurrentGpsPosition();
+    // Desktop web has no GPS: the browser's Wi-Fi fix is an old anchor
+    // (often the router's registered location). With no GPS hardware,
+    // the current network's IP location is the honest answer.
+    final pos = kIsWeb
+        ? await _desktopWebPosition()
+        : await GeocodingService.getCurrentGpsPosition();
     if (!mounted) return;
 
-    if (pos != null) {
+    if (pos == null) {
+      setState(() {
+        _isLocating = false;
+        _locationBlocked = true;
+      });
+      if (showSnackbar) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Precise location unavailable. Search a place or tap "Use My Location" again.'),
+            backgroundColor: Colors.orange,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      return;
+    }
+
+    final res = await GeocodingService.reverseGeocode(pos.latitude, pos.longitude);
+    if (!mounted) return;
+
+    setState(() {
+      _isLocating = false;
+      _locationBlocked = false;
+      _gpsPosition = LatLng(pos.latitude, pos.longitude);
+      _gpsAccuracyM = pos.accuracy;
       _latitude = pos.latitude;
       _longitude = pos.longitude;
+      if (res != null) {
+        _locationName = '${res.shortName}, ${res.district}';
+        _stateName = '${res.state}, India';
+        _searchController.text = _locationName;
+      } else {
+        _locationName = 'Lat: ${pos.latitude.toStringAsFixed(4)}, Lng: ${pos.longitude.toStringAsFixed(4)}';
+        _searchController.text = _locationName;
+      }
+      _generateBoundaryPoints();
+    });
 
-      final res = await GeocodingService.reverseGeocode(_latitude, _longitude);
-      if (!mounted) return;
+    _mapController.move(LatLng(pos.latitude, pos.longitude), 16.5);
 
-      setState(() {
-        if (res != null) {
-          _locationName = '${res.shortName}, ${res.district}';
-          _stateName = '${res.state}, India';
-          _searchController.text = _locationName;
-        } else {
-          _locationName = 'Lat: ${_latitude.toStringAsFixed(4)}, Lng: ${_longitude.toStringAsFixed(4)}';
-          _searchController.text = _locationName;
-        }
-        _generateBoundaryPoints();
-        _isLocating = false;
-      });
-
-      _mapController.move(LatLng(_latitude, _longitude), 16.5);
-
+    if (showSnackbar) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
@@ -118,15 +180,6 @@ class _FarmLocationScreenState extends State<FarmLocationScreen> {
           backgroundColor: AppColors.primaryDark,
           behavior: SnackBarBehavior.floating,
           duration: const Duration(seconds: 3),
-        ),
-      );
-    } else {
-      setState(() => _isLocating = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('GPS unavailable or permission denied. Type location in search bar.'),
-          backgroundColor: Colors.orange,
-          behavior: SnackBarBehavior.floating,
         ),
       );
     }
@@ -272,7 +325,7 @@ class _FarmLocationScreenState extends State<FarmLocationScreen> {
 
                       // Use My Location Chip
                       GestureDetector(
-                        onTap: _isLocating ? null : _useCurrentLocation,
+                        onTap: _isLocating ? null : _locateUser,
                         child: Container(
                           height: 42,
                           padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -297,13 +350,14 @@ class _FarmLocationScreenState extends State<FarmLocationScreen> {
                                   fontWeight: FontWeight.w700,
                                   color: AppColors.primaryDark,
                                 ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+),
                     ],
                   ),
+                ),
+              ),
+
+            ],
+          ),
 
                   // Search Suggestions Overlay Dropdown
                   if (_searchResults.isNotEmpty)
@@ -327,6 +381,32 @@ class _FarmLocationScreenState extends State<FarmLocationScreen> {
                         }).toList(),
                       ),
                     ),
+
+                  // Blocked-location banner (denied / GPS unavailable)
+                  if (_locationBlocked && _gpsPosition == null) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: AppColors.warning.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: AppColors.warning.withValues(alpha: 0.4)),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.location_off_outlined, size: 16, color: AppColors.warning),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Precise location unavailable. Search a place or tap "Use My Location".',
+                              style: TextStyle(fontSize: 12, color: AppColors.warning),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -373,13 +453,40 @@ class _FarmLocationScreenState extends State<FarmLocationScreen> {
                             },
                           ),
                           children: [
-                            // Tile Layer (Satellite Esri vs OSM Street)
+                            // Tile Layer (Satellite)
                             TileLayer(
-                              urlTemplate: _useSatellite
-                                  ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
-                                  : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                              urlTemplate: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
                               maxZoom: 19,
                             ),
+
+                            // Precise-location accuracy halo (Google-Maps-style)
+                            if (_gpsPosition != null && (_gpsAccuracyM ?? 0) > 0)
+                              CircleLayer(
+                                circles: [
+                                  CircleMarker(
+                                    point: _gpsPosition!,
+                                    radius: _gpsAccuracyM!,
+                                    useRadiusInMeter: true,
+                                    color: const Color(0x2687CEEB),
+                                    borderColor: const Color(0x5587CEEB),
+                                    borderStrokeWidth: 1,
+                                  ),
+                                ],
+                              ),
+
+                            // "You are here" indicator
+                            if (_gpsPosition != null)
+                              MarkerLayer(
+                                markers: [
+                                  Marker(
+                                    point: _gpsPosition!,
+                                    width: 150,
+                                    height: 74,
+                                    alignment: Alignment.bottomCenter,
+                                    child: _buildGpsIndicator(),
+                                  ),
+                                ],
+                              ),
 
                             // Real Farm Plot Polygon
                             if (_boundaryPoints.isNotEmpty)
@@ -428,18 +535,12 @@ class _FarmLocationScreenState extends State<FarmLocationScreen> {
                           ],
                         ),
 
-                        // Map Controls (Satellite Switch, Zoom In, Zoom Out)
+                        // Map Controls (Zoom In, Zoom Out)
                         Positioned(
                           top: 12,
                           right: 12,
                           child: Column(
                             children: [
-                              _buildMapButton(
-                                _useSatellite ? Icons.satellite_alt_rounded : Icons.map_outlined,
-                                () => setState(() => _useSatellite = !_useSatellite),
-                                tooltip: _useSatellite ? 'Switch to Map' : 'Switch to Satellite',
-                              ),
-                              const SizedBox(height: 8),
                               _buildMapButton(Icons.add_rounded, () {
                                 final zoom = _mapController.camera.zoom + 0.5;
                                 _mapController.move(_mapController.camera.center, zoom);
@@ -586,6 +687,51 @@ class _FarmLocationScreenState extends State<FarmLocationScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildGpsIndicator() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.96),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFF1565C0), width: 1),
+            boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2))],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'You are here',
+                style: TextStyle(
+                  color: Color(0xFF1565C0),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              Text(
+                '${_gpsPosition!.latitude.toStringAsFixed(5)}, ${_gpsPosition!.longitude.toStringAsFixed(5)}',
+                style: const TextStyle(color: Colors.black87, fontSize: 9),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 3),
+        Container(
+          width: 26,
+          height: 26,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: const Color(0xFF2196F3),
+            border: Border.all(color: Colors.white, width: 3),
+            boxShadow: const [BoxShadow(color: Colors.black38, blurRadius: 4, offset: Offset(0, 1))],
+          ),
+        ),
+      ],
     );
   }
 

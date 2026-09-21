@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_card.dart';
@@ -55,16 +56,23 @@ class _ShadowSimulationScreenState extends State<ShadowSimulationScreen> {
   @override
   Widget build(BuildContext context) {
     final sun = _sceneController.sunController;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         title: Text(
           '3D Solar & Shadow Simulation',
-          style: AppTypography.screenHeading.copyWith(fontSize: 18),
+          style: AppTypography.screenHeading.copyWith(
+            fontSize: 18,
+            color: isDark ? Colors.white : null,
+          ),
         ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
+          icon: Icon(Icons.arrow_back_rounded, color: isDark ? Colors.white : null),
           onPressed: () => context.go('/ar-3d-view'),
         ),
       ),
@@ -79,9 +87,13 @@ class _ShadowSimulationScreenState extends State<ShadowSimulationScreen> {
                 child: Container(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: AppColors.border, width: 1.5),
-                    boxShadow: const [
-                      BoxShadow(color: AppColors.shadow, blurRadius: 10, offset: Offset(0, 3)),
+                    border: Border.all(color: theme.dividerColor, width: 1.5),
+                    boxShadow: [
+                      BoxShadow(
+                        color: isDark ? Colors.black54 : AppColors.shadow,
+                        blurRadius: 10,
+                        offset: const Offset(0, 3),
+                      ),
                     ],
                   ),
                   child: ClipRRect(
@@ -289,6 +301,7 @@ class _ShadowSimulationScreenState extends State<ShadowSimulationScreen> {
     required String value,
     required Color color,
   }) {
+    final isDark = AppTheme.isDark;
     return Column(
       children: [
         Icon(icon, color: color, size: 18),
@@ -303,9 +316,9 @@ class _ShadowSimulationScreenState extends State<ShadowSimulationScreen> {
         ),
         Text(
           title,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 10,
-            color: AppColors.textSecondary,
+            color: isDark ? const Color(0xFF94A3B8) : AppColors.textSecondary,
           ),
         ),
       ],

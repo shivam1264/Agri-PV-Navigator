@@ -52,8 +52,11 @@ class _HomeScreenState extends State<HomeScreen> {
         ? dashboard.summary.totalAreaAcres
         : farms.fold<double>(0, (sum, f) => sum + f.areaAcres);
 
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F7F4),
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
           children: [
@@ -123,10 +126,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     // Greeting
                     RichText(
                       text: TextSpan(
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.w800,
-                          color: Color(0xFF0F172A),
+                          color: isDark ? Colors.white : const Color(0xFF0F172A),
                           fontFamily: 'Inter',
                         ),
                         children: [
@@ -136,11 +139,11 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     const SizedBox(height: 3),
-                    const Text(
+                    Text(
                       "Let's build a sustainable future together.",
                       style: TextStyle(
                         fontSize: 13,
-                        color: Color(0xFF64748B),
+                        color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -284,28 +287,32 @@ class _HomeScreenState extends State<HomeScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
+                        Text(
                           'Recent Farms',
                           style: TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.w800,
-                            color: Color(0xFF0F172A),
+                            color: isDark ? Colors.white : const Color(0xFF0F172A),
                           ),
                         ),
                         GestureDetector(
                           onTap: () => context.go('/farms'),
-                          child: const Row(
+                          child: Row(
                             children: [
                               Text(
                                 'View All',
                                 style: TextStyle(
-                                  color: AppColors.primary,
+                                  color: isDark ? const Color(0xFF00E676) : AppColors.primary,
                                   fontWeight: FontWeight.w700,
                                   fontSize: 13,
                                 ),
                               ),
-                              SizedBox(width: 2),
-                              Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.primary),
+                              const SizedBox(width: 2),
+                              Icon(
+                                Icons.chevron_right_rounded,
+                                size: 18,
+                                color: isDark ? const Color(0xFF00E676) : AppColors.primary,
+                              ),
                             ],
                           ),
                         ),
@@ -319,23 +326,30 @@ class _HomeScreenState extends State<HomeScreen> {
                         width: double.infinity,
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: isDark ? theme.cardColor : Colors.white,
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                          border: Border.all(color: isDark ? theme.dividerColor : const Color(0xFFE2E8F0)),
                         ),
                         child: Column(
                           children: [
-                            const Icon(Icons.agriculture_outlined, size: 36, color: Color(0xFF94A3B8)),
+                            Icon(Icons.agriculture_outlined, size: 36, color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8)),
                             const SizedBox(height: 8),
-                            const Text(
+                            Text(
                               'No farms added yet',
-                              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: Color(0xFF334155)),
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 14,
+                                color: isDark ? Colors.white : const Color(0xFF334155),
+                              ),
                             ),
                             const SizedBox(height: 4),
-                            const Text(
+                            Text(
                               'Add your first farm location to start Agri-PV analysis',
                               textAlign: TextAlign.center,
-                              style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                              ),
                             ),
                           ],
                         ),
@@ -354,22 +368,26 @@ class _HomeScreenState extends State<HomeScreen> {
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: isDark ? theme.cardColor : Colors.white,
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
-                        boxShadow: const [
-                          BoxShadow(color: AppColors.shadow, blurRadius: 6, offset: Offset(0, 2)),
+                        border: Border.all(color: isDark ? theme.dividerColor : const Color(0xFFE2E8F0)),
+                        boxShadow: [
+                          BoxShadow(
+                            color: isDark ? Colors.black.withValues(alpha: 0.35) : AppColors.shadow,
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
                         ],
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             'Environmental Impact',
                             style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w800,
-                              color: Color(0xFF0F172A),
+                              color: isDark ? Colors.white : const Color(0xFF0F172A),
                             ),
                           ),
                           const SizedBox(height: 12),
@@ -426,18 +444,21 @@ class _NavIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
         width: 36,
         height: 36,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isDark ? theme.cardColor : Colors.white,
           shape: BoxShape.circle,
-          border: Border.all(color: const Color(0xFFE2E8F0)),
+          border: Border.all(color: isDark ? theme.dividerColor : const Color(0xFFE2E8F0)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
+              color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.04),
               blurRadius: 4,
               offset: const Offset(0, 2),
             ),
@@ -446,7 +467,7 @@ class _NavIconButton extends StatelessWidget {
         child: Stack(
           alignment: Alignment.center,
           children: [
-            Icon(icon, size: 18, color: const Color(0xFF1E293B)),
+            Icon(icon, size: 18, color: isDark ? Colors.white : const Color(0xFF1E293B)),
             if (badgeColor != null)
               Positioned(
                 top: 8,
@@ -457,7 +478,7 @@ class _NavIconButton extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: badgeColor,
                     shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 1.2),
+                    border: Border.all(color: isDark ? theme.cardColor : Colors.white, width: 1.2),
                   ),
                 ),
               ),
@@ -489,18 +510,21 @@ class _StatItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: isDark ? theme.cardColor : Colors.white,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFE2E8F0), width: 1.1),
+            border: Border.all(color: isDark ? theme.dividerColor : const Color(0xFFE2E8F0), width: 1.1),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF0F172A).withValues(alpha: 0.04),
+                color: isDark ? Colors.black.withValues(alpha: 0.3) : const Color(0xFF0F172A).withValues(alpha: 0.04),
                 blurRadius: 10,
                 offset: const Offset(0, 3),
               ),
@@ -514,10 +538,14 @@ class _StatItem extends StatelessWidget {
                 width: 32,
                 height: 32,
                 decoration: BoxDecoration(
-                  color: bgColor,
+                  color: isDark ? bgColor.withValues(alpha: 0.18) : bgColor,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(icon, color: iconColor, size: 18),
+                child: Icon(
+                  icon,
+                  color: isDark && iconColor == const Color(0xFF16A34A) ? const Color(0xFF00E676) : iconColor,
+                  size: 18,
+                ),
               ),
               const SizedBox(height: 8),
               // Value + unit
@@ -528,10 +556,10 @@ class _StatItem extends StatelessWidget {
                 children: [
                   Text(
                     value,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w900,
-                      color: Color(0xFF0F172A),
+                      color: isDark ? Colors.white : const Color(0xFF0F172A),
                       letterSpacing: -0.5,
                       fontFamily: 'Inter',
                     ),
@@ -556,9 +584,9 @@ class _StatItem extends StatelessWidget {
                 textAlign: TextAlign.center,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 11,
-                  color: Color(0xFF64748B),
+                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -585,6 +613,19 @@ class _QuickActionCircle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final primaryColor = isDark ? const Color(0xFF00E676) : const Color(0xFF166534);
+    final iconColor = isPrimary
+        ? (isDark ? const Color(0xFF031A0B) : Colors.white)
+        : (isDark ? const Color(0xFF00E676) : const Color(0xFF166534));
+    final circleBg = isPrimary
+        ? primaryColor
+        : (isDark ? theme.cardColor : Colors.white);
+    final borderColor = isPrimary
+        ? primaryColor
+        : (isDark ? theme.dividerColor : const Color(0xFFE2E8F0));
+
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
@@ -595,17 +636,17 @@ class _QuickActionCircle extends StatelessWidget {
               width: 54,
               height: 54,
               decoration: BoxDecoration(
-                color: isPrimary ? const Color(0xFF166534) : Colors.white,
+                color: circleBg,
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: isPrimary ? const Color(0xFF166534) : const Color(0xFFE2E8F0),
+                  color: borderColor,
                   width: 1.2,
                 ),
                 boxShadow: [
                   BoxShadow(
                     color: isPrimary
-                        ? const Color(0xFF166534).withValues(alpha: 0.28)
-                        : Colors.black.withValues(alpha: 0.05),
+                        ? primaryColor.withValues(alpha: 0.35)
+                        : Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
                     blurRadius: 8,
                     offset: const Offset(0, 3),
                   ),
@@ -614,7 +655,7 @@ class _QuickActionCircle extends StatelessWidget {
               child: Center(
                 child: Icon(
                   icon,
-                  color: isPrimary ? Colors.white : const Color(0xFF166534),
+                  color: iconColor,
                   size: 26,
                 ),
               ),
@@ -623,10 +664,10 @@ class _QuickActionCircle extends StatelessWidget {
             Text(
               label,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
-                color: Color(0xFF0F172A),
+                color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF0F172A),
               ),
             ),
           ],
@@ -645,23 +686,39 @@ class _ImpactItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Expanded(
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
+              color: color.withValues(alpha: isDark ? 0.18 : 0.12),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, color: color, size: 20),
+            child: Icon(icon, color: isDark && color == AppColors.primary ? const Color(0xFF00E676) : color, size: 20),
           ),
           const SizedBox(width: 10),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(value, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: Color(0xFF0F172A))),
-              Text(label, style: const TextStyle(fontSize: 10.5, color: Color(0xFF64748B))),
+              Text(
+                value,
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 14,
+                  color: isDark ? Colors.white : const Color(0xFF0F172A),
+                ),
+              ),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 10.5,
+                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                ),
+              ),
             ],
           ),
         ],

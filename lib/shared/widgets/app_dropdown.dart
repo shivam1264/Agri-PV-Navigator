@@ -20,6 +20,9 @@ class AppDropdown<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -27,7 +30,7 @@ class AppDropdown<T> extends StatelessWidget {
           label,
           style: AppTypography.label.copyWith(
             fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
+            color: isDark ? const Color(0xFFF1F5F9) : AppColors.textPrimary,
           ),
         ),
         const SizedBox(height: 6),
@@ -36,12 +39,19 @@ class AppDropdown<T> extends StatelessWidget {
           isExpanded: true,
           items: items,
           onChanged: onChanged,
-          icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.textSecondary),
+          icon: Icon(
+            Icons.keyboard_arrow_down_rounded,
+            color: isDark ? const Color(0xFF94A3B8) : AppColors.textSecondary,
+          ),
           style: AppTypography.bodyLarge,
-          dropdownColor: AppColors.surface,
+          dropdownColor: isDark ? theme.cardColor : AppColors.surface,
           decoration: InputDecoration(
             prefixIcon: prefixIcon != null
-                ? Icon(prefixIcon, color: AppColors.textSecondary, size: 20)
+                ? Icon(
+                    prefixIcon,
+                    color: isDark ? const Color(0xFF94A3B8) : AppColors.textSecondary,
+                    size: 20,
+                  )
                 : null,
           ),
         ),

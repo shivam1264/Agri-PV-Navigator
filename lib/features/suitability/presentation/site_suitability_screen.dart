@@ -33,6 +33,8 @@ class _SiteSuitabilityScreenState extends State<SiteSuitabilityScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final farm = context.watch<FarmProvider>().currentOrDraftFarm;
     final suitProv = context.watch<SuitabilityProvider>();
 
@@ -41,18 +43,18 @@ class _SiteSuitabilityScreenState extends State<SiteSuitabilityScreen> {
         AgriPvCalculationService.generateSiteAssessment(farm);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF0F172A)),
+          icon: Icon(Icons.arrow_back_rounded, color: isDark ? Colors.white : const Color(0xFF0F172A)),
           onPressed: () => context.go('/farm-details'),
         ),
-        title: const Text(
+        title: Text(
           'Site Suitability',
           style: TextStyle(
-            color: Color(0xFF0F172A),
+            color: isDark ? Colors.white : const Color(0xFF0F172A),
             fontSize: 18,
             fontWeight: FontWeight.w800,
             fontFamily: 'Inter',
@@ -156,7 +158,7 @@ class _SiteSuitabilityScreenState extends State<SiteSuitabilityScreen> {
                                   size: const Size(86, 86),
                                   painter: ScoreArcPainter(
                                     score: assessment.overallScore.toDouble(),
-                                    activeColor: AppColors.primary,
+                                    activeColor: isDark ? const Color(0xFF00E676) : AppColors.primary,
                                   ),
                                 ),
                                 Column(
@@ -167,7 +169,7 @@ class _SiteSuitabilityScreenState extends State<SiteSuitabilityScreen> {
                                       style: AppTypography.metricNumber.copyWith(
                                         fontSize: 24,
                                         fontWeight: FontWeight.w800,
-                                        color: AppColors.primaryDark,
+                                        color: isDark ? const Color(0xFF00E676) : AppColors.primaryDark,
                                         height: 1.0,
                                       ),
                                     ),
@@ -197,20 +199,26 @@ class _SiteSuitabilityScreenState extends State<SiteSuitabilityScreen> {
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                   decoration: BoxDecoration(
-                                    color: AppColors.primarySurface,
+                                    color: isDark ? const Color(0xFF123520) : AppColors.primarySurface,
                                     borderRadius: BorderRadius.circular(100),
-                                    border: Border.all(color: AppColors.primaryLight.withValues(alpha: 0.3)),
+                                    border: Border.all(
+                                      color: isDark ? const Color(0xFF1B5E30) : AppColors.primaryLight.withValues(alpha: 0.3),
+                                    ),
                                   ),
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      const Icon(Icons.check_circle_rounded, size: 14, color: AppColors.primary),
+                                      Icon(
+                                        Icons.check_circle_rounded,
+                                        size: 14,
+                                        color: isDark ? const Color(0xFF00E676) : AppColors.primary,
+                                      ),
                                       const SizedBox(width: 4),
                                       Text(
                                         assessment.suitabilityStatus,
                                         style: AppTypography.labelSmall.copyWith(
                                           fontWeight: FontWeight.w700,
-                                          color: AppColors.primaryDark,
+                                          color: isDark ? const Color(0xFFB9F6CA) : AppColors.primaryDark,
                                         ),
                                       ),
                                     ],

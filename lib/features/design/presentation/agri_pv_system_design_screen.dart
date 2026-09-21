@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/app_button.dart';
@@ -31,6 +32,17 @@ class _AgriPvSystemDesignScreenState extends State<AgriPvSystemDesignScreen> {
   double _rowSpacingMeters = 6.0;
   double _panelCoveragePercent = 40.0;
   final Scene3dController _scene3dController = Scene3dController();
+  String? _customBackgroundImageUrl;
+
+  Future<void> _pickBackgroundImage() async {
+    final picker = ImagePicker();
+    final xFile = await picker.pickImage(source: ImageSource.gallery);
+    if (xFile != null) {
+      setState(() {
+        _customBackgroundImageUrl = xFile.path;
+      });
+    }
+  }
 
   @override
   void initState() {
@@ -73,19 +85,22 @@ class _AgriPvSystemDesignScreenState extends State<AgriPvSystemDesignScreen> {
       panelCoveragePercent: _panelCoveragePercent,
     );
 
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF0F172A)),
+          icon: Icon(Icons.arrow_back_rounded, color: isDark ? Colors.white : const Color(0xFF0F172A)),
           onPressed: () => context.go('/site-suitability'),
         ),
-        title: const Text(
+        title: Text(
           'System Design',
           style: TextStyle(
-            color: Color(0xFF0F172A),
+            color: isDark ? Colors.white : const Color(0xFF0F172A),
             fontSize: 18,
             fontWeight: FontWeight.w800,
             fontFamily: 'Inter',
@@ -136,7 +151,7 @@ class _AgriPvSystemDesignScreenState extends State<AgriPvSystemDesignScreen> {
                               'Optimized Presets ($farmCrop)',
                               style: AppTypography.label.copyWith(
                                 fontWeight: FontWeight.w700,
-                                color: AppColors.primaryDark,
+                                color: isDark ? AppColors.primaryLight : AppColors.primaryDark,
                               ),
                             ),
                           ],
@@ -183,10 +198,10 @@ class _AgriPvSystemDesignScreenState extends State<AgriPvSystemDesignScreen> {
                               margin: const EdgeInsets.symmetric(horizontal: 3),
                               padding: const EdgeInsets.symmetric(vertical: 10),
                               decoration: BoxDecoration(
-                                color: isSelected ? AppColors.primary : AppColors.surface,
+                                color: isSelected ? AppColors.primary : (isDark ? theme.cardColor : AppColors.surface),
                                 borderRadius: BorderRadius.circular(10),
                                 border: Border.all(
-                                  color: isSelected ? AppColors.primary : AppColors.border,
+                                  color: isSelected ? AppColors.primary : theme.dividerColor,
                                   width: 1.2,
                                 ),
                               ),
@@ -196,7 +211,7 @@ class _AgriPvSystemDesignScreenState extends State<AgriPvSystemDesignScreen> {
                                   style: AppTypography.labelSmall.copyWith(
                                     fontSize: 11,
                                     fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                                    color: isSelected ? Colors.white : AppColors.textPrimary,
+                                    color: isSelected ? Colors.white : (isDark ? Colors.white : AppColors.textPrimary),
                                   ),
                                   textAlign: TextAlign.center,
                                 ),
@@ -217,25 +232,25 @@ class _AgriPvSystemDesignScreenState extends State<AgriPvSystemDesignScreen> {
                             mainAxisAlignment: MainAxisAlignment.spaceAround,
                             children: [
                               _buildMetricColumn('${design.pvCapacityKw.toInt()} kW', 'PV Capacity'),
-                              Container(height: 26, width: 1, color: AppColors.border),
+                              Container(height: 26, width: 1, color: theme.dividerColor),
                               _buildMetricColumn('${design.annualEnergyMwh.toInt()} MWh', 'Est. Energy'),
-                              Container(height: 26, width: 1, color: AppColors.border),
+                              Container(height: 26, width: 1, color: theme.dividerColor),
                               _buildMetricColumn('${design.cultivableAreaPercent.toInt()}%', 'Cultivable'),
-                              Container(height: 26, width: 1, color: AppColors.border),
+                              Container(height: 26, width: 1, color: theme.dividerColor),
                               _buildMetricColumn('${design.cropYieldPercent.toInt()}%', 'Crop Yield'),
                             ],
                           ),
-                          const Divider(height: 18, color: AppColors.borderLight),
+                          Divider(height: 18, color: theme.dividerColor),
                           // Secondary Scientific/Institutional Metrics
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceAround,
                             children: [
                               _buildMetricColumn('${design.dliMolM2Day.toStringAsFixed(1)} mol', 'Ground DLI', color: AppColors.accent),
-                              Container(height: 26, width: 1, color: AppColors.border),
+                              Container(height: 26, width: 1, color: theme.dividerColor),
                               _buildMetricColumn('${(design.waterSavedLiters / 1000).toStringAsFixed(0)} kL', 'Water Saved', color: const Color(0xFF0284C7)),
-                              Container(height: 26, width: 1, color: AppColors.border),
-                              _buildMetricColumn('₹${design.lcoePerKwh.toStringAsFixed(2)}', 'LCOE / kWh', color: AppColors.primary),
-                              Container(height: 26, width: 1, color: AppColors.border),
+                              Container(height: 26, width: 1, color: theme.dividerColor),
+                              _buildMetricColumn('₹${design.lcoePerKwh.toStringAsFixed(2)}', 'LCOE / kWh', color: isDark ? AppColors.primaryLight : AppColors.primary),
+                              Container(height: 26, width: 1, color: theme.dividerColor),
                               _buildMetricColumn('${design.irrPercent.toStringAsFixed(1)}%', 'Project IRR', color: const Color(0xFF16A34A)),
                             ],
                           ),
@@ -354,6 +369,7 @@ class _AgriPvSystemDesignScreenState extends State<AgriPvSystemDesignScreen> {
                                 controller: _scene3dController,
                                 showSunGizmo: false,
                                 enableGestures: false,
+                                customBackgroundImageUrl: _customBackgroundImageUrl,
                               ),
                               Container(
                                 decoration: BoxDecoration(
@@ -369,7 +385,7 @@ class _AgriPvSystemDesignScreenState extends State<AgriPvSystemDesignScreen> {
                               ),
                               Positioned(
                                 top: 10,
-                                right: 10,
+                                left: 10,
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                   decoration: BoxDecoration(
@@ -420,6 +436,23 @@ class _AgriPvSystemDesignScreenState extends State<AgriPvSystemDesignScreen> {
                       ),
                     ),
                     const SizedBox(height: 14),
+                    
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: _pickBackgroundImage,
+                        icon: const Icon(Icons.add_photo_alternate_rounded),
+                        label: const Text('Upload Custom Field Background'),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                          foregroundColor: AppColors.primaryDark,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
 
                     // Visual Exploration Quick Links (3D/AR View & Shadow Simulation)
                     Row(
@@ -518,6 +551,8 @@ class _AgriPvSystemDesignScreenState extends State<AgriPvSystemDesignScreen> {
   }
 
   Widget _buildPresetChip(String title, String subtitle, VoidCallback onTap, {bool isHighlighted = false}) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Expanded(
       child: InkWell(
         onTap: onTap,
@@ -525,10 +560,12 @@ class _AgriPvSystemDesignScreenState extends State<AgriPvSystemDesignScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
           decoration: BoxDecoration(
-            color: isHighlighted ? AppColors.primarySurface : AppColors.surface,
+            color: isHighlighted
+                ? (isDark ? const Color(0xFF133520) : AppColors.primarySurface)
+                : (isDark ? theme.cardColor : AppColors.surface),
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
-              color: isHighlighted ? AppColors.primary : AppColors.border,
+              color: isHighlighted ? AppColors.primary : theme.dividerColor,
               width: isHighlighted ? 1.5 : 1.0,
             ),
           ),
@@ -540,7 +577,9 @@ class _AgriPvSystemDesignScreenState extends State<AgriPvSystemDesignScreen> {
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
-                  color: isHighlighted ? AppColors.primaryDark : AppColors.textPrimary,
+                  color: isHighlighted
+                      ? (isDark ? AppColors.primaryLight : AppColors.primaryDark)
+                      : (isDark ? Colors.white : AppColors.textPrimary),
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -549,7 +588,9 @@ class _AgriPvSystemDesignScreenState extends State<AgriPvSystemDesignScreen> {
                 subtitle,
                 style: TextStyle(
                   fontSize: 9,
-                  color: isHighlighted ? AppColors.primary : AppColors.textSecondary,
+                  color: isHighlighted
+                      ? (isDark ? AppColors.accent : AppColors.primary)
+                      : (isDark ? const Color(0xFF94A3B8) : AppColors.textSecondary),
                   fontWeight: FontWeight.w500,
                 ),
                 textAlign: TextAlign.center,
@@ -592,6 +633,7 @@ class _AgriPvSystemDesignScreenState extends State<AgriPvSystemDesignScreen> {
     required double max,
     required void Function(double) onChanged,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -605,14 +647,14 @@ class _AgriPvSystemDesignScreenState extends State<AgriPvSystemDesignScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
-                color: AppColors.primarySurface,
+                color: isDark ? const Color(0xFF133520) : AppColors.primarySurface,
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Text(
                 valueStr,
                 style: AppTypography.labelSmall.copyWith(
                   fontWeight: FontWeight.w700,
-                  color: AppColors.primaryDark,
+                  color: isDark ? AppColors.primaryLight : AppColors.primaryDark,
                 ),
               ),
             ),
@@ -621,9 +663,9 @@ class _AgriPvSystemDesignScreenState extends State<AgriPvSystemDesignScreen> {
         SliderTheme(
           data: SliderTheme.of(context).copyWith(
             activeTrackColor: AppColors.primary,
-            inactiveTrackColor: AppColors.borderLight,
-            thumbColor: AppColors.primary,
-            overlayColor: AppColors.primarySurface,
+            inactiveTrackColor: isDark ? const Color(0xFF1E2922) : AppColors.borderLight,
+            thumbColor: isDark ? AppColors.accent : AppColors.primary,
+            overlayColor: isDark ? const Color(0xFF00E676).withValues(alpha: 0.15) : AppColors.primarySurface,
             trackHeight: 4.0,
             thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
           ),

@@ -78,21 +78,28 @@ class _Ar3dViewScreenState extends State<Ar3dViewScreen> {
     final camera = _sceneController.cameraController;
     final sun = _sceneController.sunController;
     final draftFarm = context.watch<FarmProvider>().currentOrDraftFarm;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         title: Text(
           '3D / AR Digital Twin Simulation',
-          style: AppTypography.screenHeading.copyWith(fontSize: 18),
+          style: AppTypography.screenHeading.copyWith(
+            fontSize: 18,
+            color: isDark ? Colors.white : null,
+          ),
         ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
+          icon: Icon(Icons.arrow_back_rounded, color: isDark ? Colors.white : null),
           onPressed: () => context.go('/agri-pv-design'),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.restart_alt_rounded),
+            icon: Icon(Icons.restart_alt_rounded, color: isDark ? Colors.white : null),
             tooltip: 'Reset 3D Scene',
             onPressed: () {
               config.resetToDefaults();
@@ -111,8 +118,9 @@ class _Ar3dViewScreenState extends State<Ar3dViewScreen> {
               child: Container(
                 height: 40,
                 decoration: BoxDecoration(
-                  color: AppColors.surfaceSecondary,
+                  color: isDark ? theme.cardColor : AppColors.surfaceSecondary,
                   borderRadius: BorderRadius.circular(100),
+                  border: isDark ? Border.all(color: theme.dividerColor) : null,
                 ),
                 child: Row(
                   children: [
@@ -129,12 +137,12 @@ class _Ar3dViewScreenState extends State<Ar3dViewScreen> {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Icon(Icons.threed_rotation_rounded,
-                                    size: 16, color: !_isArView ? Colors.white : AppColors.textSecondary),
+                                    size: 16, color: !_isArView ? Colors.white : (isDark ? const Color(0xFF94A3B8) : AppColors.textSecondary)),
                                 const SizedBox(width: 6),
                                 Text(
                                   '3D Digital Twin',
                                   style: TextStyle(
-                                    color: !_isArView ? Colors.white : AppColors.textSecondary,
+                                    color: !_isArView ? Colors.white : (isDark ? const Color(0xFF94A3B8) : AppColors.textSecondary),
                                     fontWeight: FontWeight.w700,
                                     fontSize: 13,
                                   ),
@@ -158,12 +166,12 @@ class _Ar3dViewScreenState extends State<Ar3dViewScreen> {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Icon(Icons.view_in_ar_rounded,
-                                    size: 16, color: _isArView ? Colors.white : AppColors.textSecondary),
+                                    size: 16, color: _isArView ? Colors.white : (isDark ? const Color(0xFF94A3B8) : AppColors.textSecondary)),
                                 const SizedBox(width: 6),
                                 Text(
                                   'AR Field View',
                                   style: TextStyle(
-                                    color: _isArView ? Colors.white : AppColors.textSecondary,
+                                    color: _isArView ? Colors.white : (isDark ? const Color(0xFF94A3B8) : AppColors.textSecondary),
                                     fontWeight: FontWeight.w700,
                                     fontSize: 13,
                                   ),
@@ -187,9 +195,13 @@ class _Ar3dViewScreenState extends State<Ar3dViewScreen> {
                 child: Container(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: AppColors.border, width: 1.5),
-                    boxShadow: const [
-                      BoxShadow(color: AppColors.shadow, blurRadius: 10, offset: Offset(0, 3)),
+                    border: Border.all(color: theme.dividerColor, width: 1.5),
+                    boxShadow: [
+                      BoxShadow(
+                        color: isDark ? Colors.black54 : AppColors.shadow,
+                        blurRadius: 10,
+                        offset: const Offset(0, 3),
+                      ),
                     ],
                   ),
                   child: ClipRRect(
@@ -460,30 +472,43 @@ class _Ar3dViewScreenState extends State<Ar3dViewScreen> {
 
   Widget _buildControlTab(int index, String title, IconData icon) {
     final isSelected = _controlTab == index;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Expanded(
       child: GestureDetector(
         onTap: () => setState(() => _controlTab = index),
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 6),
           decoration: BoxDecoration(
-            color: isSelected ? AppColors.primarySurface : AppColors.surface,
+            color: isSelected
+                ? (isDark ? const Color(0xFF133520) : AppColors.primarySurface)
+                : (isDark ? theme.cardColor : AppColors.surface),
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
-              color: isSelected ? AppColors.primary : AppColors.border,
+              color: isSelected ? AppColors.primary : theme.dividerColor,
               width: isSelected ? 1.5 : 1.0,
             ),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 14, color: isSelected ? AppColors.primary : AppColors.textSecondary),
+              Icon(
+                icon,
+                size: 14,
+                color: isSelected
+                    ? (isDark ? AppColors.accent : AppColors.primary)
+                    : (isDark ? const Color(0xFF94A3B8) : AppColors.textSecondary),
+              ),
               const SizedBox(width: 4),
               Text(
                 title,
                 style: TextStyle(
                   fontSize: 11.5,
                   fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                  color: isSelected ? AppColors.primaryDark : AppColors.textPrimary,
+                  color: isSelected
+                      ? (isDark ? AppColors.primaryLight : AppColors.primaryDark)
+                      : (isDark ? Colors.white : AppColors.textPrimary),
                 ),
               ),
             ],
@@ -494,6 +519,9 @@ class _Ar3dViewScreenState extends State<Ar3dViewScreen> {
   }
 
   Widget _buildSelectedTabContent(DesignConfiguration config, dynamic sun) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     if (_controlTab == 0) {
       // Tab 0: Sun Position & Shadow Scrubbing
       return SunTimeSlider(
@@ -505,9 +533,9 @@ class _Ar3dViewScreenState extends State<Ar3dViewScreen> {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: isDark ? theme.cardColor : AppColors.surface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.border, width: 1.2),
+          border: Border.all(color: theme.dividerColor, width: 1.2),
         ),
         child: Column(
           children: [
@@ -521,7 +549,7 @@ class _Ar3dViewScreenState extends State<Ar3dViewScreen> {
               divisions: 45,
               onChanged: (val) => config.panelTilt = val,
             ),
-            const Divider(height: 12, color: AppColors.borderLight),
+            Divider(height: 12, color: theme.dividerColor),
             // Height Slider
             _buildSliderRow(
               label: 'Mounting Stilt Height',
@@ -532,7 +560,7 @@ class _Ar3dViewScreenState extends State<Ar3dViewScreen> {
               divisions: 35,
               onChanged: (val) => config.panelHeight = val,
             ),
-            const Divider(height: 12, color: AppColors.borderLight),
+            Divider(height: 12, color: theme.dividerColor),
             // Row Spacing Slider
             _buildSliderRow(
               label: 'Row Spacing (Pitch)',
@@ -551,9 +579,9 @@ class _Ar3dViewScreenState extends State<Ar3dViewScreen> {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: isDark ? theme.cardColor : AppColors.surface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.border, width: 1.2),
+          border: Border.all(color: theme.dividerColor, width: 1.2),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -573,7 +601,7 @@ class _Ar3dViewScreenState extends State<Ar3dViewScreen> {
                       margin: const EdgeInsets.symmetric(horizontal: 3),
                       padding: const EdgeInsets.symmetric(vertical: 8),
                       decoration: BoxDecoration(
-                        color: isSelected ? AppColors.primary : AppColors.surfaceSecondary,
+                        color: isSelected ? AppColors.primary : (isDark ? const Color(0xFF1B241F) : AppColors.surfaceSecondary),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Center(
@@ -582,7 +610,7 @@ class _Ar3dViewScreenState extends State<Ar3dViewScreen> {
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                            color: isSelected ? Colors.white : AppColors.textPrimary,
+                            color: isSelected ? Colors.white : (isDark ? Colors.white70 : AppColors.textPrimary),
                           ),
                         ),
                       ),
@@ -606,7 +634,7 @@ class _Ar3dViewScreenState extends State<Ar3dViewScreen> {
                         margin: const EdgeInsets.only(left: 4),
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
-                          color: isSel ? AppColors.primary : AppColors.surfaceSecondary,
+                          color: isSel ? AppColors.primary : (isDark ? const Color(0xFF1B241F) : AppColors.surfaceSecondary),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
@@ -614,7 +642,7 @@ class _Ar3dViewScreenState extends State<Ar3dViewScreen> {
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.bold,
-                            color: isSel ? Colors.white : AppColors.textSecondary,
+                            color: isSel ? Colors.white : (isDark ? const Color(0xFF94A3B8) : AppColors.textSecondary),
                           ),
                         ),
                       ),
@@ -638,6 +666,7 @@ class _Ar3dViewScreenState extends State<Ar3dViewScreen> {
     required int divisions,
     required ValueChanged<double> onChanged,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Row(
       children: [
         SizedBox(
@@ -645,8 +674,8 @@ class _Ar3dViewScreenState extends State<Ar3dViewScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-              Text(valueStr, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.primaryDark)),
+              Text(label, style: TextStyle(fontSize: 11, color: isDark ? const Color(0xFF94A3B8) : AppColors.textSecondary)),
+              Text(valueStr, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: isDark ? AppColors.primaryLight : AppColors.primaryDark)),
             ],
           ),
         ),
@@ -656,8 +685,8 @@ class _Ar3dViewScreenState extends State<Ar3dViewScreen> {
               trackHeight: 3.5,
               thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
               activeTrackColor: AppColors.primary,
-              inactiveTrackColor: AppColors.borderLight,
-              thumbColor: AppColors.primary,
+              inactiveTrackColor: isDark ? const Color(0xFF1E2922) : AppColors.borderLight,
+              thumbColor: isDark ? AppColors.accent : AppColors.primary,
             ),
             child: Slider(
               value: value,

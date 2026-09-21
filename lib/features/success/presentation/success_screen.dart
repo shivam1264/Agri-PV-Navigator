@@ -53,8 +53,11 @@ class _SuccessScreenState extends State<SuccessScreen> {
         ? '${design.co2SavedTons.toStringAsFixed(0)} Tons'
         : '${(farm.areaAcres * 140).round()} Tons';
 
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F7F4),
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
           children: [
@@ -71,10 +74,15 @@ class _SuccessScreenState extends State<SuccessScreen> {
                       Container(
                         width: 170,
                         height: 170,
-                        decoration: const BoxDecoration(
+                        decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           boxShadow: [
-                            BoxShadow(color: Color(0x2022C55E), blurRadius: 24, spreadRadius: 4, offset: Offset(0, 6)),
+                            BoxShadow(
+                              color: isDark ? AppColors.accent.withValues(alpha: 0.3) : const Color(0x2022C55E),
+                              blurRadius: 28,
+                              spreadRadius: 6,
+                              offset: const Offset(0, 6),
+                            ),
                           ],
                         ),
                         child: ClipOval(
@@ -87,12 +95,12 @@ class _SuccessScreenState extends State<SuccessScreen> {
                       const SizedBox(height: 36),
 
                       // ── Text ──
-                      const Text(
+                      Text(
                         "You're All Set! 🌱",
                         style: TextStyle(
                           fontSize: 27,
                           fontWeight: FontWeight.w900,
-                          color: Color(0xFF0F172A),
+                          color: isDark ? Colors.white : const Color(0xFF0F172A),
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -101,9 +109,9 @@ class _SuccessScreenState extends State<SuccessScreen> {
                         padding: const EdgeInsets.symmetric(horizontal: 12),
                         child: Text(
                           'Your Agri-PV project for ${farm.name} is configured.\nTogether for sustainable farms and\na brighter tomorrow.',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 15,
-                            color: Color(0xFF64748B),
+                            color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                             height: 1.55,
                             fontWeight: FontWeight.w500,
                           ),
@@ -116,19 +124,25 @@ class _SuccessScreenState extends State<SuccessScreen> {
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: isDark ? theme.cardColor : Colors.white,
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: const Color(0xFFE8F5E9)),
-                          boxShadow: const [BoxShadow(color: Color(0x06000000), blurRadius: 8, offset: Offset(0, 2))],
+                          border: Border.all(color: theme.dividerColor),
+                          boxShadow: [
+                            BoxShadow(
+                              color: isDark ? Colors.black54 : const Color(0x06000000),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceAround,
                           children: [
-                            _successStat(capacity, 'PV Capacity'),
-                            Container(height: 32, width: 1, color: const Color(0xFFE2E8F0)),
-                            _successStat(energy, 'Energy/yr'),
-                            Container(height: 32, width: 1, color: const Color(0xFFE2E8F0)),
-                            _successStat(co2, 'CO₂ Saved'),
+                            _successStat(capacity, 'PV Capacity', isDark),
+                            Container(height: 32, width: 1, color: theme.dividerColor),
+                            _successStat(energy, 'Energy/yr', isDark),
+                            Container(height: 32, width: 1, color: theme.dividerColor),
+                            _successStat(co2, 'CO₂ Saved', isDark),
                           ],
                         ),
                       ),
@@ -144,11 +158,11 @@ class _SuccessScreenState extends State<SuccessScreen> {
                       const SizedBox(height: 14),
                       TextButton(
                         onPressed: () => context.go('/reports'),
-                        child: const Text(
+                        child: Text(
                           'View My Report →',
                           style: TextStyle(
                             fontSize: 14,
-                            color: AppColors.primary,
+                            color: isDark ? AppColors.accent : AppColors.primary,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -176,10 +190,23 @@ class _SuccessScreenState extends State<SuccessScreen> {
     );
   }
 
-  Widget _successStat(String val, String label) => Column(
+  Widget _successStat(String val, String label, bool isDark) => Column(
         children: [
-          Text(val, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF0F172A))),
-          Text(label, style: const TextStyle(fontSize: 10.5, color: Color(0xFF64748B))),
+          Text(
+            val,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: isDark ? AppColors.primaryLight : const Color(0xFF0F172A),
+            ),
+          ),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10.5,
+              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+            ),
+          ),
         ],
       );
 }

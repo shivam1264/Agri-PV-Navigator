@@ -53,8 +53,11 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: isDark ? const Color(0xFF090D0B) : Colors.white,
       body: Stack(
         children: [
           // Background scenic agrivoltaic landscape photo
@@ -74,7 +77,7 @@ class _SplashScreenState extends State<SplashScreen> {
             ),
           ),
 
-          // Soft white gradient overlay on top and bottom for readability
+          // Soft gradient overlay on top and bottom for readability
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
@@ -82,9 +85,9 @@ class _SplashScreenState extends State<SplashScreen> {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    Colors.white.withValues(alpha: 0.92),
-                    Colors.white.withValues(alpha: 0.25),
-                    Colors.white.withValues(alpha: 0.95),
+                    (isDark ? const Color(0xFF090D0B) : Colors.white).withValues(alpha: 0.92),
+                    (isDark ? const Color(0xFF090D0B) : Colors.white).withValues(alpha: 0.35),
+                    (isDark ? const Color(0xFF090D0B) : Colors.white).withValues(alpha: 0.95),
                   ],
                   stops: const [0.0, 0.45, 0.85],
                 ),
@@ -104,14 +107,14 @@ class _SplashScreenState extends State<SplashScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.92),
+                      color: (isDark ? const Color(0xFF121815) : Colors.white).withValues(alpha: 0.92),
                       borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: AppColors.border, width: 1.5),
-                      boxShadow: const [
+                      border: Border.all(color: isDark ? const Color(0xFF1E2922) : AppColors.border, width: 1.5),
+                      boxShadow: [
                         BoxShadow(
-                          color: AppColors.shadow,
+                          color: isDark ? Colors.black54 : AppColors.shadow,
                           blurRadius: 16,
-                          offset: Offset(0, 4),
+                          offset: const Offset(0, 4),
                         ),
                       ],
                     ),
@@ -138,7 +141,7 @@ class _SplashScreenState extends State<SplashScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
                         decoration: BoxDecoration(
-                          color: AppColors.primarySurface,
+                          color: isDark ? const Color(0xFF133520) : AppColors.primarySurface,
                           borderRadius: BorderRadius.circular(100),
                           border: Border.all(
                             color: AppColors.primary.withValues(alpha: 0.3),
@@ -149,7 +152,7 @@ class _SplashScreenState extends State<SplashScreen> {
                           'Sustainable Farms. Brighter Tomorrows.',
                           style: AppTypography.buttonText.copyWith(
                             fontSize: 14,
-                            color: AppColors.primaryDark,
+                            color: isDark ? AppColors.primaryLight : AppColors.primaryDark,
                           ),
                         ),
                       ),

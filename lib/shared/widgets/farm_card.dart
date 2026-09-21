@@ -14,20 +14,35 @@ class FarmCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final isSuitable = farm.suitabilityScore >= 75;
     final statusLabel = isSuitable ? 'Suitable' : 'At Risk';
-    final statusColor = isSuitable ? const Color(0xFF16A34A) : const Color(0xFFD97706);
-    final statusBg = isSuitable ? const Color(0xFFDCFCE7) : const Color(0xFFFEF3C7);
-    final statusBorder = isSuitable ? const Color(0xFF86EFAC) : const Color(0xFFFCD34D);
+    final statusColor = isSuitable
+        ? (isDark ? const Color(0xFF00E676) : const Color(0xFF16A34A))
+        : (isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706));
+    final statusBg = isSuitable
+        ? (isDark ? const Color(0xFF123520) : const Color(0xFFDCFCE7))
+        : (isDark ? const Color(0xFF332510) : const Color(0xFFFEF3C7));
+    final statusBorder = isSuitable
+        ? (isDark ? const Color(0xFF1B5E30) : const Color(0xFF86EFAC))
+        : (isDark ? const Color(0xFF6E4E10) : const Color(0xFFFCD34D));
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? theme.cardColor : Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE8F5E9), width: 1.0),
-        boxShadow: const [
-          BoxShadow(color: Color(0x08000000), blurRadius: 8, offset: Offset(0, 2)),
+        border: Border.all(
+          color: isDark ? theme.dividerColor : const Color(0xFFE8F5E9),
+          width: 1.0,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: isDark ? Colors.black.withValues(alpha: 0.35) : const Color(0x08000000),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
         ],
       ),
       child: Material(
@@ -46,9 +61,16 @@ class FarmCard extends StatelessWidget {
                   height: 68,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
-                    boxShadow: const [
-                      BoxShadow(color: Color(0x0A000000), blurRadius: 4, offset: Offset(0, 1)),
+                    border: Border.all(
+                      color: isDark ? theme.dividerColor : const Color(0xFFE2E8F0),
+                      width: 1.2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: isDark ? Colors.black.withValues(alpha: 0.4) : const Color(0x0A000000),
+                        blurRadius: 4,
+                        offset: const Offset(0, 1),
+                      ),
                     ],
                   ),
                   child: ClipRRect(
@@ -125,10 +147,10 @@ class FarmCard extends StatelessWidget {
                           Expanded(
                             child: Text(
                               farm.name,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 15.5,
                                 fontWeight: FontWeight.w800,
-                                color: Color(0xFF0F172A),
+                                color: isDark ? Colors.white : const Color(0xFF0F172A),
                               ),
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -156,13 +178,17 @@ class FarmCard extends StatelessWidget {
                       // Area + crop
                       Row(
                         children: [
-                          const Icon(Icons.eco_rounded, size: 13, color: AppColors.primary),
+                          Icon(
+                            Icons.eco_rounded,
+                            size: 13,
+                            color: isDark ? const Color(0xFF00E676) : AppColors.primary,
+                          ),
                           const SizedBox(width: 3),
                           Text(
                             '${farm.areaAcres.toStringAsFixed(2)} acres • ${farm.crop}',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontWeight: FontWeight.w600,
-                              color: Color(0xFF334155),
+                              color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF334155),
                               fontSize: 12,
                             ),
                           ),
@@ -172,13 +198,17 @@ class FarmCard extends StatelessWidget {
                       // Location
                       Row(
                         children: [
-                          const Icon(Icons.location_on_outlined, size: 13, color: Color(0xFF94A3B8)),
+                          Icon(
+                            Icons.location_on_outlined,
+                            size: 13,
+                            color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
+                          ),
                           const SizedBox(width: 3),
                           Expanded(
                             child: Text(
                               farm.location,
-                              style: const TextStyle(
-                                color: Color(0xFF64748B),
+                              style: TextStyle(
+                                color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                                 fontSize: 11,
                                 fontWeight: FontWeight.w500,
                               ),

@@ -38,6 +38,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final reportProv = context.watch<ReportProvider>();
     final farmProv = context.watch<FarmProvider>();
     final allReports = List<ProposalReport>.from(reportProv.reports);
@@ -63,9 +65,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
     }).toList();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F7F4),
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF4F7F4),
+        backgroundColor: Colors.transparent,
         elevation: 0,
         title: Text('My Reports', style: AppTypography.screenHeading.copyWith(fontSize: 20)),
         automaticallyImplyLeading: false,
@@ -74,11 +76,15 @@ class _ReportsScreenState extends State<ReportsScreen> {
             icon: Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: isDark ? theme.cardColor : Colors.white,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
+                border: Border.all(color: isDark ? theme.dividerColor : const Color(0xFFE2E8F0)),
               ),
-              child: const Icon(Icons.filter_list_rounded, size: 18, color: Color(0xFF1E293B)),
+              child: Icon(
+                Icons.filter_list_rounded,
+                size: 18,
+                color: isDark ? Colors.white : const Color(0xFF1E293B),
+              ),
             ),
             onPressed: () {},
           ),
@@ -106,22 +112,24 @@ class _ReportsScreenState extends State<ReportsScreen> {
                       duration: const Duration(milliseconds: 200),
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       decoration: BoxDecoration(
-                        color: isSelected ? color : Colors.white,
+                        color: isSelected ? color : (isDark ? theme.cardColor : Colors.white),
                         borderRadius: BorderRadius.circular(100),
                         border: Border.all(
-                          color: isSelected ? color : const Color(0xFFE2E8F0),
+                          color: isSelected ? color : (isDark ? theme.dividerColor : const Color(0xFFE2E8F0)),
                           width: 1.2,
                         ),
                         boxShadow: isSelected
                             ? [BoxShadow(color: color.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 2))]
-                            : const [BoxShadow(color: Color(0x06000000), blurRadius: 4, offset: Offset(0, 1))],
+                            : [BoxShadow(color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04), blurRadius: 4, offset: const Offset(0, 1))],
                       ),
                       child: Text(
                         cat,
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
-                          color: isSelected ? Colors.white : const Color(0xFF64748B),
+                          color: isSelected
+                              ? Colors.white
+                              : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
                         ),
                       ),
                     ),
@@ -138,7 +146,11 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 children: [
                   Text(
                     '${filtered.length} report${filtered.length == 1 ? '' : 's'}',
-                    style: const TextStyle(fontSize: 13, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ],
               ),
@@ -192,13 +204,22 @@ class _ReportCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? theme.cardColor : Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE8F5E9)),
-        boxShadow: const [BoxShadow(color: Color(0x07000000), blurRadius: 8, offset: Offset(0, 2))],
+        border: Border.all(color: isDark ? theme.dividerColor : const Color(0xFFE8F5E9)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Material(
         color: Colors.transparent,
@@ -231,9 +252,9 @@ class _ReportCard extends StatelessWidget {
                   width: 46,
                   height: 46,
                   decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.1),
+                    color: color.withValues(alpha: isDark ? 0.18 : 0.1),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: color.withValues(alpha: 0.2)),
+                    border: Border.all(color: color.withValues(alpha: isDark ? 0.35 : 0.2)),
                   ),
                   child: Icon(Icons.description_rounded, color: color, size: 24),
                 ),
@@ -244,23 +265,42 @@ class _ReportCard extends StatelessWidget {
                     children: [
                       Text(
                         report.title,
-                        style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
+                        style: TextStyle(
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w700,
+                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                        ),
                       ),
                       const SizedBox(height: 3),
                       Row(
                         children: [
-                          const Icon(Icons.agriculture_outlined, size: 12, color: Color(0xFF94A3B8)),
+                          Icon(
+                            Icons.agriculture_outlined,
+                            size: 12,
+                            color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
+                          ),
                           const SizedBox(width: 4),
                           Text(
                             report.farmName,
-                            style: const TextStyle(fontSize: 12, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                           const SizedBox(width: 8),
-                          const Icon(Icons.calendar_today_outlined, size: 11, color: Color(0xFF94A3B8)),
+                          Icon(
+                            Icons.calendar_today_outlined,
+                            size: 11,
+                            color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
+                          ),
                           const SizedBox(width: 4),
                           Text(
                             DateFormat('dd MMM yyyy').format(report.date),
-                            style: const TextStyle(fontSize: 11.5, color: Color(0xFF94A3B8)),
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
+                            ),
                           ),
                         ],
                       ),

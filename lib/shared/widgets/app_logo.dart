@@ -21,16 +21,23 @@ class AppLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final brandPrimary = isDark ? const Color(0xFF00E676) : const Color(0xFF16A34A);
+
     final logoIcon = Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? theme.cardColor : Colors.white,
         borderRadius: BorderRadius.circular(size * 0.28),
-        border: Border.all(color: const Color(0xFFE2E8F0), width: 1.0),
+        border: Border.all(
+          color: isDark ? theme.dividerColor : const Color(0xFFE2E8F0),
+          width: 1.0,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
+            color: isDark ? Colors.black.withValues(alpha: 0.35) : Colors.black.withValues(alpha: 0.06),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),
@@ -63,7 +70,7 @@ class AppLogo extends StatelessWidget {
                     fontFamily: 'Inter',
                     fontSize: effectiveFontSize,
                     fontWeight: FontWeight.w800,
-                    color: const Color(0xFF0F172A),
+                    color: isDark ? Colors.white : const Color(0xFF0F172A),
                     letterSpacing: -0.3,
                   ),
                 ),
@@ -73,7 +80,7 @@ class AppLogo extends StatelessWidget {
                     fontFamily: 'Inter',
                     fontSize: effectiveFontSize,
                     fontWeight: FontWeight.w800,
-                    color: const Color(0xFF16A34A),
+                    color: brandPrimary,
                     letterSpacing: -0.3,
                   ),
                 ),
@@ -99,7 +106,7 @@ class AppLogo extends StatelessWidget {
                 fontFamily: 'Inter',
                 fontSize: effectiveFontSize,
                 fontWeight: FontWeight.w800,
-                color: const Color(0xFF0F172A),
+                color: isDark ? Colors.white : const Color(0xFF0F172A),
                 letterSpacing: -0.3,
               ),
             ),
@@ -109,7 +116,7 @@ class AppLogo extends StatelessWidget {
                 fontFamily: 'Inter',
                 fontSize: effectiveFontSize,
                 fontWeight: FontWeight.w800,
-                color: const Color(0xFF16A34A),
+                color: brandPrimary,
                 letterSpacing: -0.3,
               ),
             ),
@@ -120,7 +127,7 @@ class AppLogo extends StatelessWidget {
           Text(
             customTagline ?? 'Farms Thrive Brighter',
             style: AppTypography.bodySmall.copyWith(
-              color: const Color(0xFF64748B),
+              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
               fontWeight: FontWeight.w500,
             ),
           ),

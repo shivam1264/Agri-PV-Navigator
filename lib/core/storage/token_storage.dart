@@ -8,6 +8,7 @@ class TokenStorage {
   static const _keyAccessToken = 'agri_pv_access_token';
   static const _keyRefreshToken = 'agri_pv_refresh_token';
   static const _keyUserJson = 'agri_pv_cached_user';
+  static const _keyCustomAvatarPath = 'agri_pv_custom_avatar_path';
 
   static Future<void> saveTokens({
     required String accessToken,
@@ -49,11 +50,27 @@ class TokenStorage {
     return null;
   }
 
+  static Future<void> saveCustomAvatarPath(String path) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyCustomAvatarPath, path);
+  }
+
+  static Future<String?> getCustomAvatarPath() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_keyCustomAvatarPath);
+  }
+
+  static Future<void> clearCustomAvatarPath() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_keyCustomAvatarPath);
+  }
+
   static Future<void> clearAll() async {
     await _storage.delete(key: _keyAccessToken);
     await _storage.delete(key: _keyRefreshToken);
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_keyUserJson);
+    await prefs.remove(_keyCustomAvatarPath);
   }
 
   static Future<void> clearTokens() async {

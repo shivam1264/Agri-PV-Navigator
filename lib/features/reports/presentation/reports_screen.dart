@@ -59,7 +59,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
       final baseId = farm.id.isNotEmpty ? farm.id : 'farm_${farm.name.hashCode}';
       final repId = 'rep_prop_$baseId';
 
-      if (reportProv.isDeleted(repId) || reportProv.isDeleted(baseId)) continue;
+      if (reportProv.isDeleted(repId) ||
+          reportProv.isDeleted(baseId) ||
+          reportProv.isDeleted(farm.id) ||
+          reportProv.isFarmReportDeleted(farm.id, farm.name)) {
+        continue;
+      }
 
       if (!allReports.any((r) =>
           r.farmName.toLowerCase() == farm.name.toLowerCase() ||
@@ -433,7 +438,7 @@ class _ReportCard extends StatelessWidget {
     );
 
     if (confirmed == true && context.mounted) {
-      await context.read<ReportProvider>().deleteReport(report.id);
+      await context.read<ReportProvider>().deleteReport(report.id, farmName: report.farmName);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

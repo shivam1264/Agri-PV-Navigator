@@ -1,3 +1,4 @@
+import 'dart:io';
 import '../core/network/api_client.dart';
 import '../core/storage/token_storage.dart';
 import '../models/user_profile.dart';
@@ -7,7 +8,15 @@ class UserRepository {
 
   Future<UserProfile> getProfile() async {
     final response = await _client.get('/api/users/me');
-    final user = UserProfile.fromJson(response);
+    var user = UserProfile.fromJson(response);
+    final customAvatar = await TokenStorage.getCustomAvatarPath();
+    if (customAvatar != null && customAvatar.isNotEmpty) {
+      try {
+        if (File(customAvatar).existsSync()) {
+          user = user.copyWith(profileImage: customAvatar);
+        }
+      } catch (_) {}
+    }
     await TokenStorage.saveUser(user);
     return user;
   }
@@ -25,7 +34,15 @@ class UserRepository {
     if (preferredLanguage != null) body['preferredLanguage'] = preferredLanguage;
 
     final response = await _client.patch('/api/users/me', body: body);
-    final user = UserProfile.fromJson(response);
+    var user = UserProfile.fromJson(response);
+    final customAvatar = await TokenStorage.getCustomAvatarPath();
+    if (customAvatar != null && customAvatar.isNotEmpty) {
+      try {
+        if (File(customAvatar).existsSync()) {
+          user = user.copyWith(profileImage: customAvatar);
+        }
+      } catch (_) {}
+    }
     await TokenStorage.saveUser(user);
     return user;
   }

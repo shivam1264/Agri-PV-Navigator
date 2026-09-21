@@ -207,7 +207,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> with SingleTick
 
     if (confirmed == true && mounted) {
       final repId = widget.report?.id ?? 'rep_prop_${farm.id}';
-      await context.read<ReportProvider>().deleteReport(repId);
+      await context.read<ReportProvider>().deleteReport(repId, farmName: farm.name, farmId: farm.id);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

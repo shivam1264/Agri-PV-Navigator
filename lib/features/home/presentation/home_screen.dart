@@ -11,6 +11,7 @@ import '../../../providers/auth_provider.dart';
 import '../../../providers/farm_provider.dart';
 import '../../../providers/dashboard_provider.dart';
 import '../../../providers/notification_provider.dart';
+import '../../../providers/report_provider.dart';
 import '../../../models/user_profile.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -30,6 +31,7 @@ class _HomeScreenState extends State<HomeScreen> {
       context.read<DashboardProvider>().loadDashboard();
       context.read<FarmProvider>().loadFarms();
       context.read<NotificationProvider>().loadNotifications();
+      context.read<ReportProvider>().loadReports();
     });
   }
 
@@ -39,6 +41,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final dashboard = context.watch<DashboardProvider>();
     final farmProv = context.watch<FarmProvider>();
     final notifProv = context.watch<NotificationProvider>();
+    final reportProv = context.watch<ReportProvider>();
 
     final user = auth.user ??
         const UserProfile(
@@ -239,12 +242,12 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         const SizedBox(width: 10),
                         _StatItem(
-                          value: '${dashboard.summary.designsCreated > 0 ? dashboard.summary.designsCreated : (farms.isNotEmpty ? farms.length * 3 : 0)}',
-                          label: 'PV Designs',
-                          icon: Icons.solar_power_rounded,
+                          value: '${reportProv.reports.length}',
+                          label: 'Reports',
+                          icon: Icons.description_rounded,
                           iconColor: const Color(0xFF0284C7),
                           bgColor: const Color(0xFFE0F2FE),
-                          onTap: () => context.go('/farms'),
+                          onTap: () => context.go('/reports'),
                         ),
                       ],
                     ),

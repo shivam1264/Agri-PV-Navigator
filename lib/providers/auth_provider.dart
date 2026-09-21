@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import '../models/user_profile.dart';
 import '../repositories/auth_repository.dart';
@@ -44,10 +45,32 @@ class AuthProvider extends ChangeNotifier {
             );
         _isAuthenticated = false;
       }
+
+      // Check if custom avatar exists on disk and preserve it
+      final customAvatar = await TokenStorage.getCustomAvatarPath();
+      if (customAvatar != null && customAvatar.isNotEmpty) {
+        try {
+          if (File(customAvatar).existsSync()) {
+            _user = _user?.copyWith(profileImage: customAvatar);
+            if (_user != null) {
+              await TokenStorage.saveUser(_user!);
+            }
+          }
+        } catch (_) {}
+      }
     } catch (e) {
       final cached = await TokenStorage.getUser();
       _user = cached;
       _isAuthenticated = false;
+
+      final customAvatar = await TokenStorage.getCustomAvatarPath();
+      if (customAvatar != null && customAvatar.isNotEmpty) {
+        try {
+          if (File(customAvatar).existsSync()) {
+            _user = _user?.copyWith(profileImage: customAvatar);
+          }
+        } catch (_) {}
+      }
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -119,6 +142,7 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     await _authRepo.logout();
+    await TokenStorage.clearCustomAvatarPath();
     _user = null;
     _isAuthenticated = false;
     _isLoading = false;
@@ -156,6 +180,15 @@ class AuthProvider extends ChangeNotifier {
     final initials = newName.length >= 2
         ? newName.substring(0, 2).toUpperCase()
         : (newName.isNotEmpty ? newName[0].toUpperCase() : 'SK');
+
+    // Persist custom avatar path if updated
+    if (profileImage != null) {
+      if (profileImage.isNotEmpty && !profileImage.startsWith('assets/')) {
+        await TokenStorage.saveCustomAvatarPath(profileImage);
+      } else if (profileImage.isEmpty) {
+        await TokenStorage.clearCustomAvatarPath();
+      }
+    }
 
     _user = current.copyWith(
       name: newName,

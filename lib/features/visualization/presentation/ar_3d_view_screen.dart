@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:provider/provider.dart';
 import '../../../providers/farm_provider.dart';
+import '../../../providers/design_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/app_button.dart';
@@ -12,14 +13,14 @@ import '../engine/camera_controller.dart';
 import 'widgets/realtime_agri_pv_3d_viewport.dart';
 import 'widgets/sun_time_slider.dart';
 
-class Ar3dViewScreen extends ConsumerStatefulWidget {
+class Ar3dViewScreen extends StatefulWidget {
   const Ar3dViewScreen({super.key});
 
   @override
-  ConsumerState<Ar3dViewScreen> createState() => _Ar3dViewScreenState();
+  State<Ar3dViewScreen> createState() => _Ar3dViewScreenState();
 }
 
-class _Ar3dViewScreenState extends ConsumerState<Ar3dViewScreen> {
+class _Ar3dViewScreenState extends State<Ar3dViewScreen> {
   final Scene3dController _sceneController = Scene3dController();
   bool _isArView = false;
   bool _isFullscreen = false;
@@ -32,9 +33,10 @@ class _Ar3dViewScreenState extends ConsumerState<Ar3dViewScreen> {
 
     // Apply design configuration from draft farm if available
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final draftFarm = ref.read(draftFarmProvider);
-      if (draftFarm.design != null) {
-        final d = draftFarm.design!;
+      final draftFarm = context.read<FarmProvider>().currentOrDraftFarm;
+      final activeDesign = context.read<DesignProvider>().activeDesign;
+      if (activeDesign != null) {
+        final d = activeDesign;
         final config = _sceneController.designConfig;
         config.panelTilt = d.tiltDegrees;
         config.panelHeight = d.panelHeightMeters;
@@ -75,7 +77,7 @@ class _Ar3dViewScreenState extends ConsumerState<Ar3dViewScreen> {
     final config = _sceneController.designConfig;
     final camera = _sceneController.cameraController;
     final sun = _sceneController.sunController;
-    final draftFarm = ref.watch(draftFarmProvider);
+    final draftFarm = context.watch<FarmProvider>().currentOrDraftFarm;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -715,7 +717,7 @@ class _Ar3dViewScreenState extends ConsumerState<Ar3dViewScreen> {
   }
 
   Widget _buildFullscreenView() {
-    final draftFarm = ref.watch(draftFarmProvider);
+    final draftFarm = context.watch<FarmProvider>().currentOrDraftFarm;
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(

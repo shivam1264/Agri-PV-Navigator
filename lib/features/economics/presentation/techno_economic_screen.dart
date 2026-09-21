@@ -9,7 +9,6 @@ import '../../../shared/widgets/bottom_nav_bar.dart';
 import '../../../providers/economics_provider.dart';
 import '../../../providers/design_provider.dart';
 import '../../../providers/farm_provider.dart';
-import '../../../models/agri_pv_design.dart';
 import '../../../services/calculation/agri_pv_calculation_service.dart';
 
 class TechnoEconomicScreen extends StatefulWidget {
@@ -33,7 +32,6 @@ class _TechnoEconomicScreenState extends State<TechnoEconomicScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final econProv = context.watch<EconomicsProvider>();
     final activeDesign = context.watch<DesignProvider>().activeDesign;
     final farm = context.watch<FarmProvider>().selectedFarm;
     final farmArea = farm?.areaAcres ?? 2.35;

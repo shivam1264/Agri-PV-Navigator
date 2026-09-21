@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
@@ -9,7 +8,6 @@ import '../../../shared/widgets/bottom_nav_bar.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/design_provider.dart';
 import '../../../providers/farm_provider.dart';
-import '../../../models/agri_pv_design.dart';
 import '../../../services/calculation/agri_pv_optimizer_service.dart';
 
 class CompareDesignsScreen extends StatefulWidget {

@@ -108,7 +108,6 @@ class LocalDbService {
   }
 
   Future<void> _seedInitialFarms(Database db) async {
-    final now = DateTime.now().toIso8601String();
     final seeds = _getInitialWebFarms().map((f) => _farmToRow(f)).toList();
     for (final farm in seeds) {
       await db.insert('farms', farm, conflictAlgorithm: ConflictAlgorithm.ignore);

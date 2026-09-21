@@ -39,6 +39,10 @@ class AgriPvDesign {
   final double co2SavedTons;
   final bool isMachineryCompatible;
   final String clearanceStatus;
+  final double lcoePerKwh;
+  final double waterSavedLiters;
+  final double dliMolM2Day;
+  final double irrPercent;
 
   const AgriPvDesign({
     required this.id,
@@ -60,6 +64,10 @@ class AgriPvDesign {
     required this.co2SavedTons,
     required this.isMachineryCompatible,
     required this.clearanceStatus,
+    this.lcoePerKwh = 2.45,
+    this.waterSavedLiters = 185000.0,
+    this.dliMolM2Day = 28.5,
+    this.irrPercent = 14.8,
   });
 
   AgriPvDesign copyWith({
@@ -82,6 +90,10 @@ class AgriPvDesign {
     double? co2SavedTons,
     bool? isMachineryCompatible,
     String? clearanceStatus,
+    double? lcoePerKwh,
+    double? waterSavedLiters,
+    double? dliMolM2Day,
+    double? irrPercent,
   }) {
     return AgriPvDesign(
       id: id ?? this.id,
@@ -103,6 +115,10 @@ class AgriPvDesign {
       co2SavedTons: co2SavedTons ?? this.co2SavedTons,
       isMachineryCompatible: isMachineryCompatible ?? this.isMachineryCompatible,
       clearanceStatus: clearanceStatus ?? this.clearanceStatus,
+      lcoePerKwh: lcoePerKwh ?? this.lcoePerKwh,
+      waterSavedLiters: waterSavedLiters ?? this.waterSavedLiters,
+      dliMolM2Day: dliMolM2Day ?? this.dliMolM2Day,
+      irrPercent: irrPercent ?? this.irrPercent,
     );
   }
 

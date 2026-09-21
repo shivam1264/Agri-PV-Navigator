@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
@@ -8,13 +9,13 @@ import '../../../shared/widgets/progress_stepper.dart';
 import '../../../shared/widgets/clearance_badge.dart';
 import '../../../shared/widgets/bottom_nav_bar.dart';
 import '../../../services/calculation/agri_pv_calculation_service.dart';
+import '../../../services/calculation/agri_pv_optimizer_service.dart';
+import '../../../providers/farm_provider.dart';
+import '../../../providers/design_provider.dart';
 import '../../../models/agri_pv_design.dart';
 import '../../visualization/engine/scene_3d_controller.dart';
 import '../../visualization/engine/camera_controller.dart';
 import '../../visualization/presentation/widgets/realtime_agri_pv_3d_viewport.dart';
-import 'package:provider/provider.dart';
-import '../../../providers/farm_provider.dart';
-import '../../../providers/design_provider.dart';
 
 class AgriPvSystemDesignScreen extends StatefulWidget {
   const AgriPvSystemDesignScreen({super.key});
@@ -54,15 +55,17 @@ class _AgriPvSystemDesignScreenState extends State<AgriPvSystemDesignScreen> {
   @override
   Widget build(BuildContext context) {
     final farm = context.watch<FarmProvider>().selectedFarm;
-    final areaAcres = farm?.areaAcres ?? 2.35;
-    final crop = farm?.crop ?? 'Wheat';
+    final farmArea = farm?.areaAcres ?? 2.35;
+    final farmCrop = farm?.crop ?? 'Wheat';
+    final farmName = farm?.name ?? 'My Farm';
+    final presets = AgriPvOptimizerService.generateParetoDesigns(farmArea, farmCrop);
 
     // Live calculation via pure AgriPvCalculationService for real farm parameters
     final design = AgriPvCalculationService.generateDesign(
       id: 'design_${farm?.id ?? "custom"}',
-      name: '${farm?.name ?? "My Farm"} Agri-PV System',
-      areaAcres: areaAcres,
-      crop: crop,
+      name: '$farmName Agri-PV System',
+      areaAcres: farmArea,
+      crop: farmCrop,
       mountingType: _mountingType,
       tiltDegrees: _tiltDegrees,
       orientation: _orientation,
@@ -119,6 +122,55 @@ class _AgriPvSystemDesignScreenState extends State<AgriPvSystemDesignScreen> {
                       'Adjust mounting structure, spacing, and tilt to balance solar generation with crop yield.',
                       style: AppTypography.bodySmall,
                     ),
+                    const SizedBox(height: 14),
+
+                    // 1-Click Optimized Presets Banner
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.auto_awesome_rounded, size: 16, color: AppColors.accent),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Optimized Presets ($farmCrop)',
+                              style: AppTypography.label.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.primaryDark,
+                              ),
+                            ),
+                          ],
+                        ),
+                        TextButton(
+                          onPressed: () => context.go('/compare-designs'),
+                          style: TextButton.styleFrom(
+                            padding: EdgeInsets.zero,
+                            minimumSize: const Size(50, 24),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          child: const Text('Compare All ›', style: TextStyle(fontSize: 11)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        _buildPresetChip('🌾 Agri-First', 'Max Crop', () {
+                          final p = presets.firstWhere((d) => d.id == 'design_agri_first', orElse: () => presets[0]);
+                          _applyPreset(p);
+                        }),
+                        const SizedBox(width: 8),
+                        _buildPresetChip('⚖️ Best LER', 'Balanced', () {
+                          final p = presets.firstWhere((d) => d.id == 'design_balanced', orElse: () => presets[1]);
+                          _applyPreset(p);
+                        }, isHighlighted: true),
+                        const SizedBox(width: 8),
+                        _buildPresetChip('⚡ Power-First', 'Max Energy', () {
+                          final p = presets.firstWhere((d) => d.id == 'design_power_first', orElse: () => presets[2]);
+                          _applyPreset(p);
+                        }),
+                      ],
+                    ),
                     const SizedBox(height: 16),
 
                     // Mounting Type Selection Chips
@@ -163,21 +215,39 @@ class _AgriPvSystemDesignScreenState extends State<AgriPvSystemDesignScreen> {
                         );
                       }).toList(),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 14),
 
-                    // Live Calculated Output Metrics Bar (4 Stats)
+                    // Live Calculated Primary Metrics Bar (4 Stats)
                     AppCard(
-                      padding: const EdgeInsets.all(14),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                      child: Column(
                         children: [
-                          _buildMetricColumn('${design.pvCapacityKw.toInt()} kW', 'PV Capacity'),
-                          Container(height: 28, width: 1, color: AppColors.border),
-                          _buildMetricColumn('${design.annualEnergyMwh.toInt()} MWh', 'Est. Energy'),
-                          Container(height: 28, width: 1, color: AppColors.border),
-                          _buildMetricColumn('${design.cultivableAreaPercent.toInt()}%', 'Cultivable'),
-                          Container(height: 28, width: 1, color: AppColors.border),
-                          _buildMetricColumn('${design.cropYieldPercent.toInt()}%', 'Crop Yield'),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
+                              _buildMetricColumn('${design.pvCapacityKw.toInt()} kW', 'PV Capacity'),
+                              Container(height: 26, width: 1, color: AppColors.border),
+                              _buildMetricColumn('${design.annualEnergyMwh.toInt()} MWh', 'Est. Energy'),
+                              Container(height: 26, width: 1, color: AppColors.border),
+                              _buildMetricColumn('${design.cultivableAreaPercent.toInt()}%', 'Cultivable'),
+                              Container(height: 26, width: 1, color: AppColors.border),
+                              _buildMetricColumn('${design.cropYieldPercent.toInt()}%', 'Crop Yield'),
+                            ],
+                          ),
+                          const Divider(height: 18, color: AppColors.borderLight),
+                          // Secondary Scientific/Institutional Metrics
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
+                              _buildMetricColumn('${design.dliMolM2Day.toStringAsFixed(1)} mol', 'Ground DLI', color: AppColors.accent),
+                              Container(height: 26, width: 1, color: AppColors.border),
+                              _buildMetricColumn('${(design.waterSavedLiters / 1000).toStringAsFixed(0)} kL', 'Water Saved', color: const Color(0xFF0284C7)),
+                              Container(height: 26, width: 1, color: AppColors.border),
+                              _buildMetricColumn('₹${design.lcoePerKwh.toStringAsFixed(2)}', 'LCOE / kWh', color: AppColors.primary),
+                              Container(height: 26, width: 1, color: AppColors.border),
+                              _buildMetricColumn('${design.irrPercent.toStringAsFixed(1)}%', 'Project IRR', color: const Color(0xFF16A34A)),
+                            ],
+                          ),
                         ],
                       ),
                     ),
@@ -446,7 +516,69 @@ class _AgriPvSystemDesignScreenState extends State<AgriPvSystemDesignScreen> {
     );
   }
 
-  Widget _buildMetricColumn(String val, String title) {
+  void _applyPreset(AgriPvDesign preset) {
+    setState(() {
+      _mountingType = preset.mountingType;
+      _tiltDegrees = preset.tiltDegrees;
+      _orientation = preset.orientation;
+      _rowSpacingMeters = preset.rowSpacingMeters;
+      _panelCoveragePercent = preset.panelCoveragePercent;
+      _sync3dConfig();
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Applied ${preset.name} preset!'),
+        duration: const Duration(seconds: 1),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  Widget _buildPresetChip(String title, String subtitle, VoidCallback onTap, {bool isHighlighted = false}) {
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+          decoration: BoxDecoration(
+            color: isHighlighted ? AppColors.primarySurface : AppColors.surface,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: isHighlighted ? AppColors.primary : AppColors.border,
+              width: isHighlighted ? 1.5 : 1.0,
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: isHighlighted ? AppColors.primaryDark : AppColors.textPrimary,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  fontSize: 9,
+                  color: isHighlighted ? AppColors.primary : AppColors.textSecondary,
+                  fontWeight: FontWeight.w500,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMetricColumn(String val, String title, {Color? color}) {
     return Expanded(
       child: Column(
         children: [
@@ -454,8 +586,8 @@ class _AgriPvSystemDesignScreenState extends State<AgriPvSystemDesignScreen> {
             val,
             style: AppTypography.cardTitle.copyWith(
               fontWeight: FontWeight.w800,
-              color: AppColors.primary,
-              fontSize: 14,
+              color: color ?? AppColors.primary,
+              fontSize: 13,
             ),
           ),
           const SizedBox(height: 2),

@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/progress_stepper.dart';
 import '../../../shared/widgets/bottom_nav_bar.dart';
-
-import 'package:provider/provider.dart';
-import '../../../providers/report_provider.dart';
+import '../../../services/pdf/report_pdf_service.dart';
+import '../../../services/calculation/agri_pv_calculation_service.dart';
 import '../../../providers/farm_provider.dart';
 import '../../../providers/design_provider.dart';
+import '../../../providers/report_provider.dart';
 
 class ProposalReportScreen extends StatefulWidget {
   const ProposalReportScreen({super.key});
@@ -21,70 +23,97 @@ class ProposalReportScreen extends StatefulWidget {
 
 class _ProposalReportScreenState extends State<ProposalReportScreen> {
   bool _isDownloading = false;
+  String? _generatedFilePath;
 
   Future<void> _handleDownload() async {
-    final reportProv = context.read<ReportProvider>();
-    final farm = context.read<FarmProvider>().currentOrDraftFarm;
-    final design = context.read<DesignProvider>().activeDesign;
-
     setState(() => _isDownloading = true);
+    try {
+      final farm = context.read<FarmProvider>().currentOrDraftFarm;
+      final design = context.read<DesignProvider>().activeDesign ??
+          AgriPvCalculationService.generateDesign(
+            id: 'default',
+            name: '${farm.name} System',
+            areaAcres: farm.areaAcres,
+            crop: farm.crop,
+          );
 
-    final report = await reportProv.generateReport(
-      farmId: farm.id,
-      designId: design?.id ?? 'default_design',
-      farmName: farm.name,
-      type: 'proposal',
-    );
+      final filePath = await ReportPdfService.generateProposalReport(
+        farm: farm,
+        design: design,
+      );
 
-    if (!mounted) return;
+      setState(() {
+        _isDownloading = false;
+        _generatedFilePath = filePath;
+      });
 
-    if (report != null) {
-      final path = await reportProv.downloadAndOpenReport(report);
       if (mounted) {
-        setState(() => _isDownloading = false);
+        if (filePath == 'web_download') {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('PDF downloaded successfully!'),
+              backgroundColor: AppColors.primary,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.check_circle, color: Colors.white),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text('PDF saved: ${filePath.split('/').last}')),
+                ],
+              ),
+              backgroundColor: AppColors.primary,
+              behavior: SnackBarBehavior.floating,
+              action: SnackBarAction(
+                label: 'Share',
+                textColor: Colors.white,
+                onPressed: () => _shareFile(filePath),
+              ),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      setState(() => _isDownloading = false);
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.check_circle, color: Colors.white),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    path != null ? 'Report downloaded & opened: ${report.title}' : 'Report generated successfully',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-            backgroundColor: AppColors.primary,
-            behavior: SnackBarBehavior.floating,
+            content: Text('Failed to generate PDF: $e'),
+            backgroundColor: Colors.red,
           ),
         );
       }
-    } else {
-      setState(() => _isDownloading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(reportProv.error ?? 'Failed to generate PDF report'),
-          backgroundColor: Colors.red.shade700,
-        ),
-      );
     }
   }
 
-  void _handleShare() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Report link copied to clipboard'),
-        backgroundColor: AppColors.primaryDark,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+  Future<void> _shareFile(String filePath) async {
+    if (filePath == 'web_download') return;
+    await Share.shareXFiles([XFile(filePath)], text: 'Agri-PV Proposal Report');
+  }
+
+  void _handleShare() async {
+    if (_generatedFilePath != null && _generatedFilePath != 'web_download') {
+      await _shareFile(_generatedFilePath!);
+    } else {
+      await _handleDownload();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final farm = context.watch<FarmProvider>().currentOrDraftFarm;
+    final design = context.watch<DesignProvider>().activeDesign ??
+        AgriPvCalculationService.generateDesign(
+          id: 'default',
+          name: '${farm.name} System',
+          areaAcres: farm.areaAcres,
+          crop: farm.crop,
+        );
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -158,7 +187,63 @@ class _ProposalReportScreenState extends State<ProposalReportScreen> {
                       style: AppTypography.bodySmall,
                       textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 18),
+
+                    // Key Performance Indicators Card
+                    AppCard(
+                      padding: const EdgeInsets.all(14),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                farm.name.isNotEmpty ? farm.name : 'Farm Overview',
+                                style: AppTypography.cardTitle.copyWith(fontSize: 14, fontWeight: FontWeight.w700),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primarySurface,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: AppColors.primary, width: 1),
+                                ),
+                                child: Text(
+                                  'LER: ${design.landEquivalentRatio.toStringAsFixed(2)}',
+                                  style: const TextStyle(
+                                    color: AppColors.primaryDark,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
+                              _buildMetricTile('Capacity', '${design.pvCapacityKw.toInt()} kW'),
+                              _buildMetricTile('Energy', '${design.annualEnergyMwh.toInt()} MWh'),
+                              _buildMetricTile('Ground DLI', '${design.dliMolM2Day.toStringAsFixed(1)} mol'),
+                              _buildMetricTile('Water Saved', '${(design.waterSavedLiters / 1000).toStringAsFixed(0)} kL'),
+                            ],
+                          ),
+                          const Divider(height: 16, color: AppColors.borderLight),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
+                              _buildMetricTile('LCOE', '₹${design.lcoePerKwh.toStringAsFixed(2)}/u'),
+                              _buildMetricTile('IRR', '${design.irrPercent.toStringAsFixed(1)}%'),
+                              _buildMetricTile('Payback', '${design.paybackYears.toStringAsFixed(1)} yrs'),
+                              _buildMetricTile('CO₂ Saved', '${design.co2SavedTons.toInt()} T/y'),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
 
                     // Proposal Contents Checklist Card
                     AppCard(
@@ -267,6 +352,30 @@ class _ProposalReportScreenState extends State<ProposalReportScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildMetricTile(String label, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w800,
+            color: AppColors.primaryDark,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 10,
+            color: AppColors.textSecondary,
+          ),
+        ),
+      ],
     );
   }
 }

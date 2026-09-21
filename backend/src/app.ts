@@ -38,7 +38,7 @@ export const createApp = (): express.Application => {
   app.use('/public', express.static(publicDir));
 
   // Swagger Documentation
-  app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+  (app as any).use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
   // Health Check
   const healthHandler = (req: Request, res: Response) => {

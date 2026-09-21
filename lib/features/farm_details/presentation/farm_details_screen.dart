@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
@@ -7,16 +8,17 @@ import '../../../shared/widgets/app_text_field.dart';
 import '../../../shared/widgets/app_dropdown.dart';
 import '../../../shared/widgets/progress_stepper.dart';
 import '../../../shared/widgets/bottom_nav_bar.dart';
-import '../../../services/storage/mock_data_service.dart';
+import '../../../providers/farm_provider.dart';
+import '../../../services/calculation/solar_lookup_service.dart';
 
-class FarmDetailsScreen extends StatefulWidget {
+class FarmDetailsScreen extends ConsumerStatefulWidget {
   const FarmDetailsScreen({super.key});
 
   @override
-  State<FarmDetailsScreen> createState() => _FarmDetailsScreenState();
+  ConsumerState<FarmDetailsScreen> createState() => _FarmDetailsScreenState();
 }
 
-class _FarmDetailsScreenState extends State<FarmDetailsScreen> {
+class _FarmDetailsScreenState extends ConsumerState<FarmDetailsScreen> {
   final TextEditingController _nameController = TextEditingController(text: 'My Farm');
   final TextEditingController _areaController = TextEditingController(text: '2.35');
 
@@ -34,14 +36,18 @@ class _FarmDetailsScreenState extends State<FarmDetailsScreen> {
   }
 
   void _onNext() {
-    final mock = MockDataService();
-    mock.currentDraftFarm = mock.currentDraftFarm.copyWith(
-      name: _nameController.text.trim().isNotEmpty ? _nameController.text.trim() : 'My Farm',
+    final gridKm = SolarLookupService.getGridKm(_selectedGrid);
+    ref.read(draftFarmProvider.notifier).setDetails(
+      name: _nameController.text.trim().isNotEmpty
+          ? _nameController.text.trim()
+          : 'My Farm',
       areaAcres: double.tryParse(_areaController.text) ?? 2.35,
       crop: _selectedCrop,
       soilType: _selectedSoil,
       slope: _selectedSlope,
       irrigation: _selectedIrrigation,
+      gridString: _selectedGrid,
+      gridKm: gridKm,
     );
     context.go('/site-suitability');
   }

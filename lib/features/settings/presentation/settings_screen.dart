@@ -1,24 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/bottom_nav_bar.dart';
+import '../../../providers/farm_provider.dart';
 
-class SettingsScreen extends StatefulWidget {
+class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
   @override
-  State<SettingsScreen> createState() => _SettingsScreenState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settings = ref.watch(settingsProvider);
+    final notifier = ref.read(settingsProvider.notifier);
+    final theme = settings.isDarkMode ? 'Dark' : 'Light';
+    final language = settings.language == 'hi' ? 'Hindi (हिंदी)' : 'English';
 
-class _SettingsScreenState extends State<SettingsScreen> {
-  bool _notificationsEnabled = true;
-  String _theme = 'Light';
-  String _language = 'English';
-  final String _units = 'Metric (SI, acres)';
-
-  @override
-  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF4F7F4),
       appBar: AppBar(
@@ -44,28 +41,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       iconBg: const Color(0xFFF3E8FF),
                       iconColor: const Color(0xFF7C3AED),
                       title: 'Theme',
-                      trailing: _theme,
-                      onTap: () {
-                        setState(() => _theme = _theme == 'Light' ? 'Dark' : 'Light');
-                      },
+                      trailing: theme,
+                      onTap: () => notifier.setDarkMode(!settings.isDarkMode),
                     ),
                     _SettingRow(
                       icon: Icons.language_rounded,
                       iconBg: const Color(0xFFE0F2FE),
                       iconColor: const Color(0xFF0284C7),
                       title: 'Language',
-                      trailing: _language,
-                      onTap: () {
-                        setState(() => _language = _language == 'English' ? 'Hindi (हिंदी)' : 'English');
-                      },
+                      trailing: language,
+                      onTap: () => notifier.setLanguage(settings.language == 'en' ? 'hi' : 'en'),
                     ),
                     _SettingRow(
                       icon: Icons.straighten_rounded,
                       iconBg: const Color(0xFFFFF7ED),
                       iconColor: const Color(0xFFEA580C),
                       title: 'Units',
-                      trailing: _units,
-                      onTap: () {},
+                      trailing: settings.units == 'metric' ? 'Metric (SI)' : 'Imperial',
+                      onTap: () => notifier.setUnits(settings.units == 'metric' ? 'imperial' : 'metric'),
                     ),
                   ]),
 
@@ -77,8 +70,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       iconBg: const Color(0xFFF0FFF4),
                       iconColor: AppColors.primary,
                       title: 'Notifications',
-                      value: _notificationsEnabled,
-                      onChanged: (val) => setState(() => _notificationsEnabled = val),
+                      value: settings.notificationsEnabled,
+                      onChanged: (val) => notifier.setNotificationsEnabled(val),
                     ),
                   ]),
 

@@ -1,52 +1,104 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:uuid/uuid.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/progress_stepper.dart';
 import '../../../shared/widgets/bottom_nav_bar.dart';
+import '../../../services/pdf/report_pdf_service.dart';
+import '../../../services/storage/local_db_service.dart';
+import '../../../models/proposal_report.dart';
+import '../../../providers/farm_provider.dart';
 
-class ProposalReportScreen extends StatefulWidget {
+class ProposalReportScreen extends ConsumerStatefulWidget {
   const ProposalReportScreen({super.key});
 
   @override
-  State<ProposalReportScreen> createState() => _ProposalReportScreenState();
+  ConsumerState<ProposalReportScreen> createState() => _ProposalReportScreenState();
 }
 
-class _ProposalReportScreenState extends State<ProposalReportScreen> {
+class _ProposalReportScreenState extends ConsumerState<ProposalReportScreen> {
   bool _isDownloading = false;
+  String? _generatedFilePath;
 
-  void _handleDownload() {
+  Future<void> _handleDownload() async {
     setState(() => _isDownloading = true);
-    Future.delayed(const Duration(milliseconds: 900), () {
+    try {
+      final draft = ref.read(draftFarmProvider);
+      final farm = draft.toFarm();
+      final design = draft.design ?? draft.generateDesign();
+
+      final file = await ReportPdfService.generateProposalReport(
+        farm: farm,
+        design: design,
+      );
+
+      // Save report record to SQLite
+      final report = ProposalReport(
+        id: const Uuid().v4(),
+        title: 'Agri-PV Proposal — ${farm.name}',
+        farmName: farm.name,
+        date: DateTime.now(),
+        type: ReportType.proposal,
+        fileSize: '${(file.lengthSync() / 1024).toStringAsFixed(0)} KB',
+        downloadUrl: file.path,
+      );
+      await LocalDbService().insertReport(report);
+      // Refresh reports list
+      ref.invalidate(reportsProvider);
+
+      setState(() {
+        _isDownloading = false;
+        _generatedFilePath = file.path;
+      });
+
       if (mounted) {
-        setState(() => _isDownloading = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Row(
               children: [
-                Icon(Icons.check_circle, color: Colors.white),
-                SizedBox(width: 8),
-                Text('Agri-PV_Proposal_Farm_A.pdf saved to Downloads'),
+                const Icon(Icons.check_circle, color: Colors.white),
+                const SizedBox(width: 8),
+                Expanded(child: Text('PDF saved: ${file.path.split('/').last}')),
               ],
             ),
             backgroundColor: AppColors.primary,
             behavior: SnackBarBehavior.floating,
+            action: SnackBarAction(
+              label: 'Share',
+              textColor: Colors.white,
+              onPressed: () => _shareFile(file.path),
+            ),
           ),
         );
       }
-    });
+    } catch (e) {
+      setState(() => _isDownloading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to generate PDF: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
-  void _handleShare() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Report link copied to clipboard'),
-        backgroundColor: AppColors.primaryDark,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+  Future<void> _shareFile(String filePath) async {
+    await Share.shareXFiles([XFile(filePath)], text: 'Agri-PV Proposal Report');
+  }
+
+  void _handleShare() async {
+    if (_generatedFilePath != null) {
+      await _shareFile(_generatedFilePath!);
+    } else {
+      await _handleDownload();
+    }
   }
 
   @override

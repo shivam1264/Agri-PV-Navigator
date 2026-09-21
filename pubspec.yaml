@@ -40,6 +40,21 @@ dependencies:
   fl_chart: ^1.2.0
   flutter_svg: ^2.3.0
 
+  # Local persistence & state
+  sqflite: ^2.3.3
+  path: ^1.9.0
+  shared_preferences: ^2.3.3
+  flutter_riverpod: ^2.6.1
+
+  # PDF generation & sharing
+  pdf: ^3.11.1
+  printing: ^5.13.1
+  path_provider: ^2.1.4
+  share_plus: ^10.1.4
+
+  # Utilities
+  uuid: ^4.5.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

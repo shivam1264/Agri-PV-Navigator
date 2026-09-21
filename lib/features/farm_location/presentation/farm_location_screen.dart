@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
@@ -7,15 +8,16 @@ import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/progress_stepper.dart';
 import '../../../shared/widgets/bottom_nav_bar.dart';
 import '../../../shared/painters/farm_boundary_painter.dart';
+import '../../../providers/farm_provider.dart';
 
-class FarmLocationScreen extends StatefulWidget {
+class FarmLocationScreen extends ConsumerStatefulWidget {
   const FarmLocationScreen({super.key});
 
   @override
-  State<FarmLocationScreen> createState() => _FarmLocationScreenState();
+  ConsumerState<FarmLocationScreen> createState() => _FarmLocationScreenState();
 }
 
-class _FarmLocationScreenState extends State<FarmLocationScreen> {
+class _FarmLocationScreenState extends ConsumerState<FarmLocationScreen> {
   double _areaAcres = 2.35;
   String _locationName = 'Phulpur, Prayagraj';
   final String _stateName = 'Uttar Pradesh, India';
@@ -289,7 +291,6 @@ class _FarmLocationScreenState extends State<FarmLocationScreen> {
               ),
             ),
 
-            // Navigation Buttons (< Previous, Next →)
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
               child: Row(
@@ -307,7 +308,14 @@ class _FarmLocationScreenState extends State<FarmLocationScreen> {
                     child: AppButton(
                       text: 'Next ›',
                       variant: AppButtonVariant.primary,
-                      onPressed: () => context.go('/farm-details'),
+                      onPressed: () {
+                        ref.read(draftFarmProvider.notifier).setLocation(
+                          location: _locationName,
+                          stateName: _stateName,
+                          areaAcres: _areaAcres,
+                        );
+                        context.go('/farm-details');
+                      },
                       height: 46,
                     ),
                   ),

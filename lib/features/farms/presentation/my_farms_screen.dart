@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/farm_card.dart';
 import '../../../shared/widgets/bottom_nav_bar.dart';
-import '../../../services/storage/mock_data_service.dart';
+import '../../../providers/farm_provider.dart';
 
-class MyFarmsScreen extends StatefulWidget {
+class MyFarmsScreen extends ConsumerStatefulWidget {
   const MyFarmsScreen({super.key});
 
   @override
-  State<MyFarmsScreen> createState() => _MyFarmsScreenState();
+  ConsumerState<MyFarmsScreen> createState() => _MyFarmsScreenState();
 }
 
-class _MyFarmsScreenState extends State<MyFarmsScreen> {
+class _MyFarmsScreenState extends ConsumerState<MyFarmsScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
 
@@ -24,13 +25,20 @@ class _MyFarmsScreenState extends State<MyFarmsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final allFarms = MockDataService().farms;
+    final farmsAsync = ref.watch(farmsProvider);
+    final allFarms = farmsAsync.value ?? [];
 
     final filteredFarms = allFarms.where((farm) {
       return farm.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           farm.location.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           farm.crop.toLowerCase().contains(_searchQuery.toLowerCase());
     }).toList();
+
+    if (farmsAsync.isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
 
     return Scaffold(
       backgroundColor: const Color(0xFFF4F7F4),

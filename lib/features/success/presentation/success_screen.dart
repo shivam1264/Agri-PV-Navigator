@@ -1,14 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/bottom_nav_bar.dart';
+import '../../../providers/farm_provider.dart';
 
-class SuccessScreen extends StatelessWidget {
+class SuccessScreen extends ConsumerWidget {
   const SuccessScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final draft = ref.watch(draftFarmProvider);
+    final design = draft.design ?? draft.generateDesign();
+    final pvKw = '${design.pvCapacityKw.toStringAsFixed(0)} kW';
+    final energyMwh = '${design.annualEnergyMwh.toStringAsFixed(0)} MWh';
+    final co2Tons = '${design.co2SavedTons.toStringAsFixed(0)} Tons';
     return Scaffold(
       backgroundColor: const Color(0xFFF4F7F4),
       body: SafeArea(
@@ -80,11 +87,11 @@ class SuccessScreen extends StatelessWidget {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceAround,
                           children: [
-                            _successStat('250 kW', 'PV Capacity'),
+                            _successStat(pvKw, 'PV Capacity'),
                             Container(height: 32, width: 1, color: const Color(0xFFE2E8F0)),
-                            _successStat('400 MWh', 'Energy/yr'),
+                            _successStat(energyMwh, 'Energy/yr'),
                             Container(height: 32, width: 1, color: const Color(0xFFE2E8F0)),
-                            _successStat('420 Tons', 'CO₂ Saved'),
+                            _successStat(co2Tons, 'CO₂ Saved'),
                           ],
                         ),
                       ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
@@ -8,15 +9,24 @@ import '../../../shared/widgets/bottom_nav_bar.dart';
 import '../../../shared/widgets/app_logo.dart';
 import '../../../services/storage/mock_data_service.dart';
 import '../../../shared/painters/agrivoltaic_3d_painter.dart';
+import '../../../providers/farm_provider.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final mockService = MockDataService();
     final user = mockService.user;
-    final farms = mockService.farms;
+    final farmsAsync = ref.watch(farmsProvider);
+    final farmCountAsync = ref.watch(farmCountProvider);
+    final totalAreaAsync = ref.watch(totalAreaProvider);
+    final designCountAsync = ref.watch(designCountProvider);
+    // Use real db values if ready, else fall back to mock
+    final totalFarms = farmCountAsync.value ?? user.totalFarms;
+    final totalArea = totalAreaAsync.value ?? user.totalAreaAcres;
+    final designCount = designCountAsync.value ?? user.designsCreated;
+    final farms = farmsAsync.value ?? mockService.farms;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF4F7F4),
@@ -184,7 +194,7 @@ class HomeScreen extends StatelessWidget {
                     Row(
                       children: [
                         _StatItem(
-                          value: '${user.totalFarms}',
+                          value: '$totalFarms',
                           label: 'Total Farms',
                           icon: Icons.agriculture_rounded,
                           iconColor: const Color(0xFF16A34A),
@@ -193,7 +203,7 @@ class HomeScreen extends StatelessWidget {
                         ),
                         const SizedBox(width: 10),
                         _StatItem(
-                          value: '${user.totalAreaAcres}',
+                          value: totalArea.toStringAsFixed(2),
                           label: 'Total Area',
                           unit: 'ac',
                           icon: Icons.crop_free_rounded,
@@ -202,7 +212,7 @@ class HomeScreen extends StatelessWidget {
                         ),
                         const SizedBox(width: 10),
                         _StatItem(
-                          value: '${user.designsCreated}',
+                          value: '$designCount',
                           label: 'PV Designs',
                           icon: Icons.solar_power_rounded,
                           iconColor: const Color(0xFF0284C7),

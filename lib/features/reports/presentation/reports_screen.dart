@@ -1,19 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/bottom_nav_bar.dart';
-import '../../../services/storage/mock_data_service.dart';
 import '../../../models/proposal_report.dart';
+import '../../../providers/farm_provider.dart';
 
-class ReportsScreen extends StatefulWidget {
+class ReportsScreen extends ConsumerStatefulWidget {
   const ReportsScreen({super.key});
 
   @override
-  State<ReportsScreen> createState() => _ReportsScreenState();
+  ConsumerState<ReportsScreen> createState() => _ReportsScreenState();
 }
 
-class _ReportsScreenState extends State<ReportsScreen> {
+class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   String _selectedCategory = 'All';
 
   static const _categories = ['All', 'Designs', 'Financial', 'Impact'];
@@ -27,8 +28,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final mock = MockDataService();
-    final allReports = mock.reports;
+    final reportsAsync = ref.watch(reportsProvider);
+    final allReports = reportsAsync.value ?? [];
 
     final filtered = allReports.where((r) {
       if (_selectedCategory == 'All') return true;

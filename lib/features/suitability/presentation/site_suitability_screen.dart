@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
@@ -9,15 +10,97 @@ import '../../../shared/widgets/factor_card.dart';
 import '../../../shared/widgets/bottom_nav_bar.dart';
 import '../../../shared/painters/score_arc_painter.dart';
 import '../../../shared/painters/farm_boundary_painter.dart';
-import '../../../services/storage/mock_data_service.dart';
+import '../../../services/calculation/agri_pv_calculation_service.dart';
+import '../../../services/calculation/solar_lookup_service.dart';
+import '../../../models/suitability_factor.dart';
+import '../../../providers/farm_provider.dart';
 
-class SiteSuitabilityScreen extends StatelessWidget {
+class SiteSuitabilityScreen extends ConsumerWidget {
   const SiteSuitabilityScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final mockService = MockDataService();
-    final assessment = mockService.defaultSiteAssessment;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final draft = ref.watch(draftFarmProvider);
+
+    // Calculate real suitability from user inputs
+    final irradiation = SolarLookupService.getIrradiation(draft.location.isEmpty ? 'Uttar Pradesh' : draft.location);
+    final slopePercent = SolarLookupService.getSlopePercent(draft.slope);
+    final cropTolerance = SolarLookupService.getCropShadeTolerance(draft.crop);
+    final hasIrrigation = draft.irrigation != 'Rainfed';
+
+    final score = AgriPvCalculationService.calculateSuitability(
+      solarIrradiationKwh: irradiation,
+      slopePercent: slopePercent,
+      soilType: draft.soilType,
+      hasIrrigation: hasIrrigation,
+      cropShadeTolerance: cropTolerance,
+      gridDistanceKm: draft.gridProximityKm,
+    );
+
+    // Save score back to draft
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(draftFarmProvider.notifier).setSuitabilityScore(score);
+    });
+
+    // Build real factor list from computed inputs
+    final factors = [
+      SuitabilityFactor(
+        id: 'f1', name: 'Solar Resource',
+        score: ((irradiation / 6.5) * 100).round().clamp(40, 100),
+        metricValue: '${irradiation.toStringAsFixed(1)} kWh/m²/day',
+        shortReason: SolarLookupService.getSolarZoneLabel(irradiation),
+        fullAssessment: 'Solar irradiation of ${irradiation.toStringAsFixed(1)} kWh/m²/day supports strong PV output.',
+        impact: irradiation >= 5.0 ? 'Positive: High capacity utilization factor expected.' : 'Moderate: Adequate for viable PV generation.',
+        icon: Icons.wb_sunny_rounded, accentColor: AppColors.solar,
+      ),
+      SuitabilityFactor(
+        id: 'f2', name: 'Land Slope',
+        score: slopePercent <= 2 ? 92 : slopePercent <= 5 ? 80 : 55,
+        metricValue: '${slopePercent.toStringAsFixed(1)}% slope',
+        shortReason: slopePercent <= 2 ? 'Ideal flat land.' : slopePercent <= 5 ? 'Gentle slope, manageable.' : 'Moderate slope, needs civil work.',
+        fullAssessment: 'Slope of ${slopePercent.toStringAsFixed(1)}% determines civil foundation requirements.',
+        impact: slopePercent <= 2 ? 'Positive: Minimal civil terracing needed.' : 'Moderate: Some levelling may be required.',
+        icon: Icons.landscape_rounded, accentColor: AppColors.slope,
+      ),
+      SuitabilityFactor(
+        id: 'f3', name: 'Soil Type',
+        score: draft.soilType.toLowerCase().contains('loam') ? 85 : draft.soilType.toLowerCase().contains('alluvial') ? 90 : 70,
+        metricValue: draft.soilType,
+        shortReason: '${draft.soilType} supports dual cultivation.',
+        fullAssessment: '${draft.soilType} provides good load-bearing capacity and agricultural fertility.',
+        impact: 'Positive: Suitable for anchor piling and healthy root growth.',
+        icon: Icons.grass_rounded, accentColor: AppColors.soil,
+      ),
+      SuitabilityFactor(
+        id: 'f4', name: 'Water Availability',
+        score: hasIrrigation ? (draft.irrigation == 'Available' ? 80 : 65) : 50,
+        metricValue: draft.irrigation,
+        shortReason: hasIrrigation ? 'Irrigation supports panel washing & crop hydration.' : 'Rainfed only — limits module cleaning.',
+        fullAssessment: 'Regular irrigation enables periodic module dust cleaning and crop hydration.',
+        impact: hasIrrigation ? 'Positive: Scheduled module washing feasible.' : 'Moderate: Rainfed may reduce panel efficiency.',
+        icon: Icons.water_drop_rounded, accentColor: AppColors.water,
+      ),
+      SuitabilityFactor(
+        id: 'f5', name: 'Crop Shade Tolerance',
+        score: (cropTolerance * 100).round(),
+        metricValue: draft.crop,
+        shortReason: '${draft.crop} can tolerate partial shading.',
+        fullAssessment: '${draft.crop} has shade tolerance of ${(cropTolerance * 100).toInt()}%, suitable for Agri-PV.',
+        impact: cropTolerance >= 0.75 ? 'Positive: Microclimate benefit expected.' : 'Moderate: Monitor shading impact on yield.',
+        icon: Icons.eco_rounded, accentColor: AppColors.primary,
+      ),
+      SuitabilityFactor(
+        id: 'f6', name: 'Grid Proximity',
+        score: draft.gridProximityKm <= 3 ? 88 : draft.gridProximityKm <= 7 ? 75 : 55,
+        metricValue: '${draft.gridProximityKm.toStringAsFixed(1)} km to substation',
+        shortReason: draft.gridProximityKm <= 3 ? 'Short interconnection reduces costs.' : 'Feasible grid distance.',
+        fullAssessment: 'Grid distance of ${draft.gridProximityKm.toStringAsFixed(1)} km determines evacuation infrastructure cost.',
+        impact: draft.gridProximityKm <= 3 ? 'Positive: Low interconnection CAPEX.' : 'Moderate: Longer line adds cost.',
+        icon: Icons.electric_bolt_rounded, accentColor: AppColors.solar,
+      ),
+    ];
+
+    final locationLabel = draft.location.isEmpty ? 'Your Farm' : draft.location.split(',').first;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -101,13 +184,13 @@ class SiteSuitabilityScreen extends StatelessWidget {
                                   color: Colors.black.withValues(alpha: 0.65),
                                   borderRadius: BorderRadius.circular(20),
                                 ),
-                                child: const Row(
+                                child: Row(
                                   children: [
-                                    Icon(Icons.location_on, color: Colors.white, size: 13),
-                                    SizedBox(width: 4),
+                                    const Icon(Icons.location_on, color: Colors.white, size: 13),
+                                    const SizedBox(width: 4),
                                     Text(
-                                      'Your Farm (Phulpur)',
-                                      style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+                                      locationLabel,
+                                      style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
                                     ),
                                   ],
                                 ),
@@ -134,7 +217,7 @@ class SiteSuitabilityScreen extends StatelessWidget {
                                 CustomPaint(
                                   size: const Size(86, 86),
                                   painter: ScoreArcPainter(
-                                    score: assessment.overallScore.toDouble(),
+                                    score: score.toDouble(),
                                     activeColor: AppColors.primary,
                                   ),
                                 ),
@@ -142,7 +225,7 @@ class SiteSuitabilityScreen extends StatelessWidget {
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Text(
-                                      '${assessment.overallScore}',
+                                      '$score',
                                       style: AppTypography.metricNumber.copyWith(
                                         fontSize: 24,
                                         fontWeight: FontWeight.w800,
@@ -186,7 +269,11 @@ class SiteSuitabilityScreen extends StatelessWidget {
                                       const Icon(Icons.check_circle_rounded, size: 14, color: AppColors.primary),
                                       const SizedBox(width: 4),
                                       Text(
-                                        assessment.suitabilityStatus,
+                                        score >= 80
+                                            ? 'Highly Suitable'
+                                            : score >= 60
+                                                ? 'Moderately Suitable'
+                                                : 'Low Suitability',
                                         style: AppTypography.labelSmall.copyWith(
                                           fontWeight: FontWeight.w700,
                                           color: AppColors.primaryDark,
@@ -197,7 +284,11 @@ class SiteSuitabilityScreen extends StatelessWidget {
                                 ),
                                 const SizedBox(height: 6),
                                 Text(
-                                  'High solar resource and favorable slope make this land optimal for elevated PV.',
+                                  score >= 80
+                                      ? 'High solar resource and favorable slope make this land optimal for elevated PV.'
+                                      : score >= 60
+                                          ? 'Moderate suitability — some factors may need attention before installation.'
+                                          : 'Marginal suitability — consult an expert for custom assessment.',
                                   style: AppTypography.bodySmall.copyWith(fontSize: 11),
                                 ),
                               ],
@@ -215,7 +306,7 @@ class SiteSuitabilityScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 10),
 
-                    ...assessment.factors.map((factor) => FactorCard(
+                    ...factors.map((factor) => FactorCard(
                       factor: factor,
                       onTap: () => context.go('/suitability-details'),
                     )),
@@ -252,7 +343,7 @@ class SiteSuitabilityScreen extends StatelessWidget {
                     child: AppButton(
                       text: 'Next ›',
                       variant: AppButtonVariant.primary,
-                      onPressed: () => context.go('/suitability-details'),
+                      onPressed: () => context.go('/agri-pv-design'),
                       height: 46,
                     ),
                   ),

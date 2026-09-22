@@ -22,6 +22,9 @@ class _ThreeJsBridgeState extends State<ThreeJsBridge> {
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(const Color(0x00000000))
+      ..setOnConsoleMessage((message) {
+        debugPrint("ThreeJS WebView Console [${message.level}]: ${message.message}");
+      })
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageFinished: (String url) {
@@ -32,6 +35,9 @@ class _ThreeJsBridgeState extends State<ThreeJsBridge> {
               // Once loaded, inject the initial config
               _updateScene(widget.configJson);
             }
+          },
+          onWebResourceError: (error) {
+            debugPrint("ThreeJS WebView Error: ${error.description}");
           },
         ),
       );
@@ -58,7 +64,7 @@ class _ThreeJsBridgeState extends State<ThreeJsBridge> {
     #three-container { width: 100vw; height: 100vh; }
   </style>
   <script>
-    \$threeEngineScript
+    $threeEngineScript
   </script>
 </head>
 <body>
@@ -75,7 +81,7 @@ class _ThreeJsBridgeState extends State<ThreeJsBridge> {
 </html>
 ''';
 
-      await _controller.loadHtmlString(htmlContent);
+      await _controller.loadHtmlString(htmlContent, baseUrl: 'https://localhost/');
     } catch (e) {
       debugPrint("Error loading ThreeJS HTML: \$e");
     }
@@ -93,7 +99,7 @@ class _ThreeJsBridgeState extends State<ThreeJsBridge> {
     if (!_isLoading) {
       // Escape the JSON string to safely pass it into JS execution
       final escapedJson = jsonEncode(configJson); 
-      _controller.runJavaScript("if (window.updateAgriPvScene) { window.updateAgriPvScene(\$escapedJson); }");
+      _controller.runJavaScript("if (window.updateAgriPvScene) { window.updateAgriPvScene($escapedJson); }");
     }
   }
 

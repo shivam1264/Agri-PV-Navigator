@@ -1,6 +1,7 @@
 let scene, camera, renderer, controls;
 let instancedPanels, instancedStilts, boundaryLine, instancedFrames, instancedBeams, instancedBases, instancedCrops;
 let sunLight;
+let pendingConfig = null;
 
 window.initAgriPvScene = function(containerId) {
     const container = document.getElementById(containerId);
@@ -72,27 +73,33 @@ window.initAgriPvScene = function(containerId) {
     scene.add(sunLight);
 
     // 6. Ground Plane (Enhanced Realism)
+    const groundGeo = new THREE.PlaneGeometry(160, 160, 64, 64);
+    // Initial solid green color for fallback
+    const groundMat = new THREE.MeshStandardMaterial({ 
+        color: 0x668844, 
+        roughness: 0.85, 
+        metalness: 0.02 
+    });
+    const ground = new THREE.Mesh(groundGeo, groundMat);
+    ground.name = 'farmGround';
+    ground.rotation.x = -Math.PI / 2;
+    ground.receiveShadow = true;
+    scene.add(ground);
+
     const textureLoader = new THREE.TextureLoader();
-    textureLoader.load('assets/assets/images/farm_satellite.jpg', function(texture) {
-        // Use ClampToEdge so the satellite image spans the field continuously without repeating
+    textureLoader.load('assets/images/farm_satellite.jpg', function(texture) {
         texture.wrapS = THREE.ClampToEdgeWrapping;
         texture.wrapT = THREE.ClampToEdgeWrapping;
         texture.repeat.set(1, 1);
         texture.encoding = THREE.sRGBEncoding;
         
-        const groundGeo = new THREE.PlaneGeometry(160, 160, 64, 64);
-        const groundMat = new THREE.MeshStandardMaterial({ 
-            map: texture,
-            bumpMap: texture,
-            bumpScale: 0.15,
-            roughness: 0.85, 
-            metalness: 0.02 
-        });
-        const ground = new THREE.Mesh(groundGeo, groundMat);
-        ground.name = 'farmGround';
-        ground.rotation.x = -Math.PI / 2;
-        ground.receiveShadow = true;
-        scene.add(ground);
+        ground.material.map = texture;
+        ground.material.bumpMap = texture;
+        ground.material.bumpScale = 0.15;
+        ground.material.color.setHex(0xffffff); // Remove fallback tint
+        ground.material.needsUpdate = true;
+    }, undefined, function(e) {
+        console.warn("Satellite texture could not be loaded on this platform. Using fallback material.", e);
     });
 
     // Handle Resize
@@ -111,12 +118,20 @@ window.initAgriPvScene = function(containerId) {
         renderer.render(scene, camera);
     }
     animate();
+
+    if (pendingConfig) {
+        window.updateAgriPvScene(pendingConfig);
+        pendingConfig = null;
+    }
 };
 
 let currentGroundImageUrl = null;
 
 window.updateAgriPvScene = function(configJson) {
-    if (!scene) return;
+    if (!scene) {
+        pendingConfig = configJson;
+        return;
+    }
     try {
         const config = JSON.parse(configJson);
         

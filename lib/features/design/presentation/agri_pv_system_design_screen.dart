@@ -97,6 +97,21 @@ class _AgriPvSystemDesignScreenState extends State<AgriPvSystemDesignScreen> {
         ? computeFieldRows(farm.boundary, _rowSpacingMeters, _panelCoveragePercent)
         : null;
 
+    // Calculate Cartesian coordinates in meters for the 3D visualizer
+    List<String> boundaryCoords = [];
+    if (farm.boundary.isNotEmpty) {
+      final double centerLat = farm.latitude ?? farm.boundary.first[0];
+      final double centerLng = farm.longitude ?? farm.boundary.first[1];
+      for (final p in farm.boundary) {
+        final double lat = p[0];
+        final double lng = p[1];
+        // Convert to Cartesian meters relative to center
+        final x = (lng - centerLng) * 111320 * math.cos(centerLat * math.pi / 180);
+        final z = -(lat - centerLat) * 111320;
+        boundaryCoords.add('${x.toStringAsFixed(2)},${z.toStringAsFixed(2)}');
+      }
+    }
+
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -458,6 +473,7 @@ class _AgriPvSystemDesignScreenState extends State<AgriPvSystemDesignScreen> {
                             children: [
                               RealtimeAgriPv3dViewport(
                                 controller: _scene3dController,
+                                boundaryCoords: boundaryCoords,
                                 showSunGizmo: false,
                                 enableGestures: false,
                                 customBackgroundImageUrl: _customBackgroundImageUrl,
@@ -969,7 +985,10 @@ class _ParcelLayoutPreview extends StatelessWidget {
               top: 10,
               left: 10,
               child: GestureDetector(
-                onTap: () => context.go('/farm-location'),
+                onTap: () {
+                  context.read<FarmProvider>().loadFarmToDraft(farm);
+                  context.go('/farm-location');
+                },
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(

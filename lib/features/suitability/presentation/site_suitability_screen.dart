@@ -158,7 +158,10 @@ class _SiteSuitabilityScreenState extends State<SiteSuitabilityScreen> {
                               top: 10,
                               left: 10,
                               child: GestureDetector(
-                                onTap: widget.readOnly ? null : () => context.go('/farm-location'),
+                                onTap: widget.readOnly ? null : () {
+                                  context.read<FarmProvider>().loadFarmToDraft(farm);
+                                  context.go('/farm-location');
+                                },
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                   decoration: BoxDecoration(
@@ -183,7 +186,10 @@ class _SiteSuitabilityScreenState extends State<SiteSuitabilityScreen> {
                                 top: 10,
                                 right: 10,
                                 child: GestureDetector(
-                                  onTap: () => context.go('/farm-location'),
+                                  onTap: () {
+                                    context.read<FarmProvider>().loadFarmToDraft(farm);
+                                    context.go('/farm-location');
+                                  },
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                     decoration: BoxDecoration(

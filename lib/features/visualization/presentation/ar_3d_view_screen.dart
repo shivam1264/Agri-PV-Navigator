@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'dart:math' as math;
 import '../../../providers/farm_provider.dart';
 import '../../../providers/design_provider.dart';
 import '../../../core/theme/app_colors.dart';
@@ -66,6 +67,24 @@ class _Ar3dViewScreenState extends State<Ar3dViewScreen> {
 
   void _onSceneUpdate() {
     if (mounted) setState(() {});
+  }
+
+  List<String> _getBoundaryCoords() {
+    final draftFarm = context.read<FarmProvider>().currentOrDraftFarm;
+    List<String> boundaryCoords = [];
+    if (draftFarm.boundary.isNotEmpty) {
+      final double centerLat = draftFarm.latitude ?? draftFarm.boundary.first[0];
+      final double centerLng = draftFarm.longitude ?? draftFarm.boundary.first[1];
+      for (final p in draftFarm.boundary) {
+        final double lat = p[0];
+        final double lng = p[1];
+        // Convert to Cartesian meters relative to center
+        final x = (lng - centerLng) * 111320 * math.cos(centerLat * math.pi / 180);
+        final z = -(lat - centerLat) * 111320;
+        boundaryCoords.add('${x.toStringAsFixed(2)},${z.toStringAsFixed(2)}');
+      }
+    }
+    return boundaryCoords;
   }
 
   @override
@@ -281,7 +300,7 @@ class _Ar3dViewScreenState extends State<Ar3dViewScreen> {
                               // Real-Time 3D Interactive Scene Viewport
                               RealtimeAgriPv3dViewport(
                                 controller: _sceneController,
-                                boundaryCoords: draftFarm.coordinates,
+                                boundaryCoords: _getBoundaryCoords(),
                                 showSunGizmo: true,
                                 enableGestures: true,
                               ),
@@ -753,7 +772,7 @@ class _Ar3dViewScreenState extends State<Ar3dViewScreen> {
         children: [
           RealtimeAgriPv3dViewport(
             controller: _sceneController,
-            boundaryCoords: draftFarm.coordinates,
+            boundaryCoords: _getBoundaryCoords(),
             showSunGizmo: true,
             enableGestures: true,
           ),

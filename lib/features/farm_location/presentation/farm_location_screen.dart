@@ -71,7 +71,13 @@ class _FarmLocationScreenState extends State<FarmLocationScreen> {
       _stateName = 'India';
     }
     _searchController.text = _locationName;
-    _generateBoundaryPoints();
+    if (draft['boundaryPoints'] != null) {
+      final points = draft['boundaryPoints'] as List;
+      _boundaryPoints = points.map((p) => LatLng((p[0] as num).toDouble(), (p[1] as num).toDouble())).toList();
+      _manualEdit = true;
+    } else {
+      _generateBoundaryPoints();
+    }
 
     // Automatically fetch the user's precise location on open, unless a
     // location was already chosen in an earlier session step.
@@ -104,8 +110,6 @@ class _FarmLocationScreenState extends State<FarmLocationScreen> {
     super.dispose();
   }
 
-  /// Recomputes the acreage 700ms after the last drag ends, i.e. once the
-  /// boundary is judged stable. New drags restart the countdown.
   void _scheduleAreaRecalc() {
     _areaTimer?.cancel();
     _areaTimer = Timer(const Duration(milliseconds: 700), () {
@@ -113,7 +117,36 @@ class _FarmLocationScreenState extends State<FarmLocationScreen> {
       setState(() {
         _areaAcres = GeocodingService.calculatePolygonAreaInAcres(_boundaryPoints);
       });
+      _saveDraftState();
     });
+  }
+
+  void _saveDraftState() {
+    final stateClean = _stateName.contains(',') ? _stateName.split(',').first.trim() : _stateName;
+    final districtClean = _locationName.contains(',') ? _locationName.split(',').first.trim() : _locationName;
+    if (_boundaryPoints.isEmpty) return;
+    context.read<FarmProvider>().updateDraftLocation(
+      latitude: _latitude,
+      longitude: _longitude,
+      state: stateClean,
+      district: districtClean,
+      areaAcres: _areaAcres,
+      boundaryPoints: [
+        for (final p in _boundaryPoints) [p.latitude, p.longitude],
+      ],
+    );
+  }
+
+  void _navigateAndSave(String? route) {
+    _areaTimer?.cancel();
+    if (_boundaryPoints.isNotEmpty) {
+      _areaAcres = GeocodingService.calculatePolygonAreaInAcres(_boundaryPoints);
+    }
+    _saveDraftState();
+    
+    if (route != null) {
+      context.go(route);
+    }
   }
 
   /// Midpoint of each edge of the implicitly-closed polygon ring.
@@ -308,7 +341,7 @@ class _FarmLocationScreenState extends State<FarmLocationScreen> {
         elevation: 0,
         leading: IconButton(
           icon: Icon(Icons.arrow_back_rounded, color: isDark ? Colors.white : const Color(0xFF0F172A)),
-          onPressed: () => context.go('/home'),
+          onPressed: () => _navigateAndSave('/home'),
         ),
         title: Text(
           'Farm Location',
@@ -332,9 +365,9 @@ class _FarmLocationScreenState extends State<FarmLocationScreen> {
             ProgressStepper(
               currentStep: 1,
               onStepTapped: (step) {
-                if (step == 2) context.go('/farm-details');
-                if (step == 3) context.go('/site-suitability');
-                if (step == 4) context.go('/agri-pv-design');
+                if (step == 2) _navigateAndSave('/farm-details');
+                if (step == 3) _navigateAndSave('/site-suitability');
+                if (step == 4) _navigateAndSave('/agri-pv-design');
               },
             ),
 
@@ -767,6 +800,32 @@ Text(
             ),
 
             // Bottom Info Card: Selected Area & Real Location
+            // Save Boundary Button
+            if (_boundaryPoints.length >= 3)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: AppButton(
+                    text: 'Save Boundary Area',
+                    icon: Icons.save_rounded,
+                    variant: AppButtonVariant.primary,
+                    onPressed: () {
+                      _navigateAndSave(null); // Save without navigating
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Boundary Area Saved Successfully!'),
+                          backgroundColor: AppColors.success,
+                          behavior: SnackBarBehavior.floating,
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    },
+                    height: 48,
+                  ),
+                ),
+              ),
+
             Padding(
               padding: const EdgeInsets.all(20.0),
               child: AppCard(
@@ -826,7 +885,7 @@ Text(
                     child: AppButton(
                       text: '‹ Previous',
                       variant: AppButtonVariant.outline,
-                      onPressed: () => context.go('/home'),
+                      onPressed: () => _navigateAndSave('/home'),
                       height: 46,
                     ),
                   ),
@@ -836,26 +895,7 @@ Text(
                       text: 'Next ›',
                       variant: AppButtonVariant.primary,
                       onPressed: () {
-                        final stateClean = _stateName.contains(',') ? _stateName.split(',').first.trim() : _stateName;
-                        final districtClean = _locationName.contains(',') ? _locationName.split(',').first.trim() : _locationName;
-
-                        // Guarantee exact acreage for whatever shape was last drawn,
-                        // even if the 700ms debounce hasn't fired yet.
-                        _areaTimer?.cancel();
-                        _areaAcres = GeocodingService.calculatePolygonAreaInAcres(_boundaryPoints);
-
-                        // Save real live coordinates, drawn boundary & calculated acreage
-                        context.read<FarmProvider>().updateDraftLocation(
-                          latitude: _latitude,
-                          longitude: _longitude,
-                          state: stateClean,
-                          district: districtClean,
-                          areaAcres: _areaAcres,
-                          boundaryPoints: [
-                            for (final p in _boundaryPoints) [p.latitude, p.longitude],
-                          ],
-                        );
-                        context.go('/farm-details');
+                        _navigateAndSave('/farm-details');
                       },
                       height: 46,
                     ),
@@ -872,11 +912,11 @@ Text(
             BottomNavBar(
               currentIndex: 2,
               onTap: (index) {
-                if (index == 0) context.go('/home');
-                if (index == 1) context.go('/farms');
-                if (index == 2) context.go('/farm-location');
-                if (index == 3) context.go('/reports');
-                if (index == 4) context.go('/profile');
+                if (index == 0) _navigateAndSave('/home');
+                if (index == 1) _navigateAndSave('/farms');
+                if (index == 2) _navigateAndSave('/farm-location');
+                if (index == 3) _navigateAndSave('/reports');
+                if (index == 4) _navigateAndSave('/profile');
               },
             ),
           ],

@@ -120,6 +120,27 @@ if (boundaryPoints != null) {
     notifyListeners();
   }
 
+  void loadFarmToDraft(Farm farm) {
+    _draftFarm.clear();
+    _draftFarm.addAll({
+      'latitude': farm.latitude,
+      'longitude': farm.longitude,
+      'state': farm.state,
+      'district': farm.location,
+      'areaAcres': farm.areaAcres,
+      'name': farm.name,
+      'cropType': farm.crop,
+      'soilType': farm.soilType,
+      'slope': farm.slope,
+      'irrigation': farm.irrigation,
+      'gridProximityKm': farm.gridProximityKm,
+    });
+    if (farm.boundary.isNotEmpty) {
+      _draftFarm['boundaryPoints'] = List<List<double>>.from(farm.boundary);
+    }
+    notifyListeners();
+  }
+
   void updateDraftDetails({
     String? name,
     String? cropType,
